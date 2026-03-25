@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["client", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "Digital service offered on the platform",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string", "enum": ["MERN Stack", "WordPress", "Video Editing", "Digital Marketing"] },
+        "image": { "type": "string" },
+        "features": { "type": "array", "items": { "type": "string" } },
+        "active": { "type": "boolean" }
+      },
+      "required": ["title", "description", "price", "category"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Service booking/order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceTitle": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "paid", "in-progress", "completed", "cancelled"] },
+        "paymentId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["clientId", "serviceId", "price", "status"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User review for a service",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["serviceId", "clientId", "rating"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Chat message between client and admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "orderId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "receiverId", "text"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/services/{serviceId}": { "schema": "Service", "description": "Available services" },
+    "/orders/{orderId}": { "schema": "Order", "description": "Service orders" },
+    "/reviews/{reviewId}": { "schema": "Review", "description": "Service reviews" },
+    "/messages/{messageId}": { "schema": "Message", "description": "Chat messages" }
+  }
+}

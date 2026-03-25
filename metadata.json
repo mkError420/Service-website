@@ -1,0 +1,5 @@
+{
+  "name": "ServiceHub Pro",
+  "description": "A premium service-based marketplace for MERN development, WordPress, Video Editing, and Digital Marketing.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"]
+}
