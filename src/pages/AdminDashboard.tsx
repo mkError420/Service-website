@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { Service, Order, UserProfile } from '../types';
+import { seedServices } from '../lib/seedData';
 import { 
   Plus, 
   Edit2, 
@@ -15,7 +16,8 @@ import {
   LayoutDashboard,
   ShieldCheck,
   Search,
-  Filter
+  Filter,
+  Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -32,6 +34,8 @@ export default function AdminDashboard() {
   const [orderStatusFilter, setOrderStatusFilter] = useState('All');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [isSeedModalOpen, setIsSeedModalOpen] = useState(false);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -135,6 +139,20 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSeed = async () => {
+    setIsSeeding(true);
+    try {
+      await seedServices();
+      toast.success("26 services added successfully!");
+      setIsSeedModalOpen(false);
+    } catch (error) {
+      console.error("Seeding error:", error);
+      toast.error("Failed to seed services. Please ensure your email is verified.");
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   const stats = [
     { label: 'Total Revenue', value: `$${orders.filter(o => o.status !== 'cancelled').reduce((acc, o) => acc + o.price, 0)}`, icon: TrendingUp, color: '#F27D26' },
     { label: 'Active Orders', value: orders.filter(o => ['paid', 'in-progress'].includes(o.status)).length, icon: ShoppingBag, color: '#1A1A1A' },
@@ -168,13 +186,23 @@ export default function AdminDashboard() {
           </div>
           <h1 className="text-4xl md:text-6xl font-black tracking-tighter">Management Hub<span className="text-[#F27D26]">.</span></h1>
         </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="bg-[#1A1A1A] text-white px-8 py-4 rounded-2xl text-lg font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 flex items-center"
-        >
-          <Plus size={24} className="mr-2" />
-          Add New Service
-        </button>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button 
+            onClick={() => setIsSeedModalOpen(true)}
+            disabled={isSeeding}
+            className="bg-gray-100 text-[#1A1A1A] px-8 py-4 rounded-2xl text-lg font-bold hover:bg-gray-200 transition-all flex items-center disabled:opacity-50"
+          >
+            <Database size={24} className="mr-2" />
+            Seed 26 Services
+          </button>
+          <button 
+            onClick={() => handleOpenModal()}
+            className="bg-[#1A1A1A] text-white px-8 py-4 rounded-2xl text-lg font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 flex items-center"
+          >
+            <Plus size={24} className="mr-2" />
+            Add New Service
+          </button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -418,6 +446,48 @@ export default function AdminDashboard() {
                     Close
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Seed Confirmation Modal */}
+      <AnimatePresence>
+        {isSeedModalOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 bg-[#F27D26]/10 text-[#F27D26] rounded-full flex items-center justify-center mx-auto mb-6">
+                <Database size={40} />
+              </div>
+              <h2 className="text-2xl font-black mb-4">Seed Inventory?</h2>
+              <p className="text-[#4A4A4A] mb-10">This will add 26 professional services across all categories to your inventory. This is great for quickly populating your site.</p>
+              
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setIsSeedModalOpen(false)}
+                  disabled={isSeeding}
+                  className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSeed}
+                  disabled={isSeeding}
+                  className="flex-1 px-8 py-4 bg-[#F27D26] text-white rounded-2xl font-bold hover:bg-[#E06C15] transition-all shadow-lg shadow-[#F27D26]/20 disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isSeeding ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                      Seeding...
+                    </>
+                  ) : 'Confirm Seed'}
+                </button>
               </div>
             </motion.div>
           </div>
