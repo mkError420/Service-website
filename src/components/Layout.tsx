@@ -80,7 +80,10 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Services', path: '/services', icon: Briefcase },
   ];
 
-  const authLinks = profile?.role === 'admin' 
+  const isDefaultAdmin = user?.email === "mk.rabbani.cse@gmail.com" && user?.emailVerified;
+  const isAdmin = profile?.role === 'admin' || isDefaultAdmin;
+
+  const authLinks = isAdmin 
     ? [
         { name: 'Admin Panel', path: '/admin', icon: ShieldCheck },
         { name: 'Messages', path: '/chat', icon: MessageSquare },

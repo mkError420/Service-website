@@ -33,7 +33,11 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
 
   if (loading) return <div className="p-20 text-center font-bold">Verifying Access...</div>;
   if (!user) return <Navigate to="/" />;
-  if (adminOnly && profile?.role !== 'admin') return <Navigate to="/" />;
+  
+  const isDefaultAdmin = user.email === "mk.rabbani.cse@gmail.com" && user.emailVerified;
+  const isAdmin = profile?.role === 'admin' || isDefaultAdmin;
+
+  if (adminOnly && !isAdmin) return <Navigate to="/" />;
 
   return <>{children}</>;
 }

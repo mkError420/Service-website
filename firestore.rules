@@ -91,7 +91,9 @@ service cloud.firestore {
              data.description is string && data.description.size() > 0 && data.description.size() < 2000 &&
              data.price is number && data.price >= 0 &&
              data.category in ['MERN Stack', 'WordPress', 'Video Editing', 'Digital Marketing'] &&
-             data.active is bool;
+             data.active is bool &&
+             (!('image' in data) || data.image is string) &&
+             (!('features' in data) || data.features is list);
     }
 
     function isValidOrder(data) {
@@ -125,7 +127,8 @@ service cloud.firestore {
 
     match /services/{serviceId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin() && isValidService(request.resource.data);
+      allow create, update: if isAdmin() && isValidService(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /orders/{orderId} {

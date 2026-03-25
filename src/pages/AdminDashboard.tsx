@@ -26,6 +26,12 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [serviceSearchTerm, setServiceSearchTerm] = useState('');
+  const [serviceCategoryFilter, setServiceCategoryFilter] = useState('All');
+  const [orderSearchTerm, setOrderSearchTerm] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('All');
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -106,14 +112,14 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this service?")) {
-      try {
-        await deleteDoc(doc(db, 'services', id));
-        toast.success("Service deleted");
-      } catch (error) {
-        toast.error("Failed to delete service");
-      }
+  const handleDelete = async () => {
+    if (!deletingServiceId) return;
+    try {
+      await deleteDoc(doc(db, 'services', deletingServiceId));
+      toast.success("Service deleted");
+      setDeletingServiceId(null);
+    } catch (error) {
+      toast.error("Failed to delete service");
     }
   };
 
@@ -134,6 +140,21 @@ export default function AdminDashboard() {
     { label: 'Active Orders', value: orders.filter(o => ['paid', 'in-progress'].includes(o.status)).length, icon: ShoppingBag, color: '#1A1A1A' },
     { label: 'Total Services', value: services.length, icon: LayoutDashboard, color: '#F27D26' },
   ];
+
+  const filteredServices = services.filter(service => {
+    const matchesSearch = service.title.toLowerCase().includes(serviceSearchTerm.toLowerCase()) || 
+                          service.description.toLowerCase().includes(serviceSearchTerm.toLowerCase());
+    const matchesCategory = serviceCategoryFilter === 'All' || service.category === serviceCategoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = order.id.toLowerCase().includes(orderSearchTerm.toLowerCase()) || 
+                          order.serviceTitle.toLowerCase().includes(orderSearchTerm.toLowerCase()) ||
+                          order.clientId.toLowerCase().includes(orderSearchTerm.toLowerCase());
+    const matchesStatus = orderStatusFilter === 'All' || order.status === orderStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   if (loading) return <div className="p-20 text-center font-bold">Loading Admin Panel...</div>;
 
@@ -173,15 +194,43 @@ export default function AdminDashboard() {
 
       {/* Services Management */}
       <div className="mb-24">
-        <div className="flex justify-between items-center mb-10">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
           <h2 className="text-3xl font-black flex items-center">
             <LayoutDashboard size={28} className="text-[#F27D26] mr-4" />
             Service Inventory
           </h2>
+          
+          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+            <div className="relative group flex-grow lg:w-64">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#F27D26] transition-colors" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search services..."
+                className="w-full pl-12 pr-6 py-3 bg-white border border-gray-100 rounded-xl focus:border-[#F27D26] focus:ring-0 transition-all text-sm font-medium shadow-sm"
+                value={serviceSearchTerm}
+                onChange={(e) => setServiceSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="relative lg:w-48">
+              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+              <select 
+                className="w-full appearance-none bg-white border border-gray-100 pl-12 pr-10 py-3 rounded-xl text-sm font-bold focus:border-[#F27D26] focus:ring-0 transition-all cursor-pointer shadow-sm"
+                value={serviceCategoryFilter}
+                onChange={(e) => setServiceCategoryFilter(e.target.value)}
+              >
+                {['All', 'MERN Stack', 'WordPress', 'Video Editing', 'Digital Marketing'].map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {services.map((service) => (
-            <div key={service.id} className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg shadow-black/5 group">
+          {filteredServices.length > 0 ? (
+            filteredServices.map((service) => (
+              <div key={service.id} className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg shadow-black/5 group">
               <div className="relative h-48 rounded-3xl overflow-hidden mb-6">
                 <img src={service.image || `https://picsum.photos/seed/${service.id}/800/600`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${service.active ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
@@ -200,7 +249,7 @@ export default function AdminDashboard() {
                     <Edit2 size={18} />
                   </button>
                   <button 
-                    onClick={() => handleDelete(service.id)}
+                    onClick={() => setDeletingServiceId(service.id)}
                     className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all"
                   >
                     <Trash2 size={18} />
@@ -208,16 +257,50 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-          ))}
+          ))
+        ) : (
+          <div className="col-span-full py-20 text-center bg-gray-50 rounded-[40px] border-2 border-dashed border-gray-200">
+            <p className="text-[#9E9E9E] font-medium">No services match your filters.</p>
+          </div>
+        )}
         </div>
       </div>
 
       {/* Orders Management */}
       <div className="bg-[#1A1A1A] rounded-[60px] p-12 md:p-20 text-white overflow-hidden">
-        <h2 className="text-3xl md:text-5xl font-black mb-12 tracking-tight flex items-center">
-          <ShoppingBag size={40} className="text-[#F27D26] mr-6" />
-          Order Pipeline
-        </h2>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-8">
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight flex items-center">
+            <ShoppingBag size={40} className="text-[#F27D26] mr-6" />
+            Order Pipeline
+          </h2>
+          
+          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+            <div className="relative group flex-grow lg:w-64">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-[#F27D26] transition-colors" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search orders..."
+                className="w-full pl-12 pr-6 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-[#F27D26] focus:bg-white/10 focus:ring-0 transition-all text-sm font-medium"
+                value={orderSearchTerm}
+                onChange={(e) => setOrderSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="relative lg:w-48">
+              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={18} />
+              <select 
+                className="w-full appearance-none bg-white/5 border border-white/10 pl-12 pr-10 py-3 rounded-xl text-sm font-bold focus:border-[#F27D26] focus:bg-white/10 focus:ring-0 transition-all cursor-pointer"
+                value={orderStatusFilter}
+                onChange={(e) => setOrderStatusFilter(e.target.value)}
+              >
+                {['All', 'pending', 'paid', 'in-progress', 'completed', 'cancelled'].map(s => (
+                  <option key={s} value={s} className="bg-[#1A1A1A]">{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -229,38 +312,152 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {orders.map((order) => (
-                <tr key={order.id} className="group hover:bg-white/5 transition-colors">
-                  <td className="py-8">
-                    <p className="font-bold text-lg">{order.id.slice(0, 8)}</p>
-                    <p className="text-xs text-gray-400 font-medium">UID: {order.clientId.slice(0, 8)}</p>
-                  </td>
-                  <td className="py-8">
-                    <p className="font-bold">{order.serviceTitle}</p>
-                    <p className="text-xs text-[#F27D26] font-black uppercase tracking-widest">${order.price}</p>
-                  </td>
-                  <td className="py-8">
-                    <select 
-                      value={order.status}
-                      onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                      className="bg-white/10 border-transparent rounded-xl text-xs font-bold uppercase tracking-widest px-4 py-2 focus:ring-0 focus:border-[#F27D26] cursor-pointer"
-                    >
-                      {['pending', 'paid', 'in-progress', 'completed', 'cancelled'].map(s => (
-                        <option key={s} value={s} className="bg-[#1A1A1A]">{s}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="py-8 text-right">
-                    <button className="text-xs font-bold uppercase tracking-widest bg-white text-[#1A1A1A] px-6 py-3 rounded-xl hover:bg-[#F27D26] hover:text-white transition-all">
-                      View Details
-                    </button>
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map((order) => (
+                  <tr key={order.id} className="group hover:bg-white/5 transition-colors">
+                    <td className="py-8">
+                      <p className="font-bold text-lg">{order.id.slice(0, 8)}</p>
+                      <p className="text-xs text-gray-400 font-medium">UID: {order.clientId.slice(0, 8)}</p>
+                    </td>
+                    <td className="py-8">
+                      <p className="font-bold">{order.serviceTitle}</p>
+                      <p className="text-xs text-[#F27D26] font-black uppercase tracking-widest">${order.price}</p>
+                    </td>
+                    <td className="py-8">
+                      <select 
+                        value={order.status}
+                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                        className="bg-white/10 border-transparent rounded-xl text-xs font-bold uppercase tracking-widest px-4 py-2 focus:ring-0 focus:border-[#F27D26] cursor-pointer"
+                      >
+                        {['pending', 'paid', 'in-progress', 'completed', 'cancelled'].map(s => (
+                          <option key={s} value={s} className="bg-[#1A1A1A]">{s}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-8 text-right">
+                      <button 
+                        onClick={() => setSelectedOrder(order)}
+                        className="text-xs font-bold uppercase tracking-widest bg-white text-[#1A1A1A] px-6 py-3 rounded-xl hover:bg-[#F27D26] hover:text-white transition-all"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-20 text-center text-gray-500 font-medium">
+                    No orders match your criteria.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Order Details Modal */}
+      <AnimatePresence>
+        {selectedOrder && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-xl rounded-[40px] p-10 shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-10">
+                <h2 className="text-3xl font-black tracking-tight">Order Details</h2>
+                <button onClick={() => setSelectedOrder(null)} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-8">
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Order ID</p>
+                    <p className="font-bold text-[#1A1A1A]">{selectedOrder.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Status</p>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      selectedOrder.status === 'completed' ? 'bg-green-100 text-green-600' : 
+                      selectedOrder.status === 'cancelled' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                      {selectedOrder.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Service</p>
+                  <p className="text-xl font-black text-[#1A1A1A]">{selectedOrder.serviceTitle}</p>
+                  <p className="text-[#F27D26] font-black">${selectedOrder.price}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Client UID</p>
+                  <p className="font-medium text-[#4A4A4A] break-all">{selectedOrder.clientId}</p>
+                </div>
+
+                <div className="pt-8 border-t border-gray-100 flex gap-4">
+                  <button 
+                    onClick={() => {
+                      setSelectedOrder(null);
+                      // In a real app, navigate to chat with this order context
+                    }}
+                    className="flex-grow bg-[#1A1A1A] text-white py-4 rounded-2xl font-bold hover:bg-[#F27D26] transition-all"
+                  >
+                    Open Chat
+                  </button>
+                  <button 
+                    onClick={() => setSelectedOrder(null)}
+                    className="px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingServiceId && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={40} />
+              </div>
+              <h2 className="text-2xl font-black mb-4">Delete Service?</h2>
+              <p className="text-[#4A4A4A] mb-10">This action cannot be undone. Are you sure you want to remove this service from your inventory?</p>
+              
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setDeletingServiceId(null)}
+                  className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  className="flex-1 px-8 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Service Modal */}
       <AnimatePresence>
