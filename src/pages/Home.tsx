@@ -194,7 +194,7 @@ export default function Home() {
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-6 pt-12">
                 <div className="bg-[#F27D26] p-1 rounded-[32px]">
-                  <img src="https://images.unsplash.com/photo-1522071823991-b1ae5e6a3048?q=80&w=2070&auto=format&fit=crop" className="rounded-[30px] w-full aspect-square object-cover" referrerPolicy="no-referrer" />
+                  <img src="https://custom-images.strikinglycdn.com/res/hrscywv4p/image/upload/c_limit,fl_lossy,h_9000,w_1200,f_auto,q_auto/405230/567571_198506.jpeg" className="rounded-[30px] w-full aspect-square object-cover" alt="Team collaboration" referrerPolicy="no-referrer" />
                 </div>
                 <div className="bg-gray-100 p-8 rounded-[32px] text-center">
                   <h4 className="text-4xl font-black text-[#1A1A1A]">100%</h4>
@@ -207,7 +207,7 @@ export default function Home() {
                   <p className="text-sm text-gray-400 font-medium">Support</p>
                 </div>
                 <div className="bg-gray-100 p-1 rounded-[32px]">
-                  <img src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070&auto=format&fit=crop" className="rounded-[30px] w-full aspect-square object-cover" referrerPolicy="no-referrer" />
+                  <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070&auto=format&fit=crop" className="rounded-[30px] w-full aspect-square object-cover" alt="Expert support" referrerPolicy="no-referrer" />
                 </div>
               </div>
             </div>
