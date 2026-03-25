@@ -12,7 +12,7 @@ service cloud.firestore {
     //   - email: string (required)
     //   - displayName: string (optional)
     //   - photoURL: string (optional)
-    //   - role: string (required, 'client' or 'admin')
+    //   - role: string (required, 'client', 'admin', or 'employee')
     //   - createdAt: timestamp (required)
     //
     // Collection: services
@@ -35,6 +35,8 @@ service cloud.firestore {
     //   - price: number (required)
     //   - status: string (required, 'pending', 'paid', 'in-progress', 'completed', 'cancelled')
     //   - paymentId: string (optional)
+    //   - assignedExpertId: string (optional)
+    //   - assignedExpertName: string (optional)
     //   - createdAt: timestamp (required)
     //   - updatedAt: timestamp (required)
     //
@@ -76,6 +78,11 @@ service cloud.firestore {
          (request.auth.token.email == "mk.rabbani.cse@gmail.com" && request.auth.token.email_verified == true));
     }
 
+    function isEmployee() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'employee';
+    }
+
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
     }
@@ -83,7 +90,7 @@ service cloud.firestore {
     function isValidUser(data) {
       return data.uid is string && data.uid.size() > 0 &&
              data.email is string && data.email.size() > 0 &&
-             data.role in ['client', 'admin'];
+             data.role in ['client', 'admin', 'employee'];
     }
 
     function isValidService(data) {
@@ -93,14 +100,18 @@ service cloud.firestore {
              data.category in ['MERN Stack', 'WordPress', 'Video Editing', 'Digital Marketing'] &&
              data.active is bool &&
              (!('image' in data) || data.image is string) &&
-             (!('features' in data) || data.features is list);
+             (!('features' in data) || data.features is list) &&
+             (!('expertId' in data) || data.expertId is string || data.expertId == null) &&
+             (!('expertName' in data) || data.expertName is string || data.expertName == null);
     }
 
     function isValidOrder(data) {
       return data.clientId is string && data.clientId.size() > 0 &&
              data.serviceId is string && data.serviceId.size() > 0 &&
              data.price is number && data.price >= 0 &&
-             data.status in ['pending', 'paid', 'in-progress', 'completed', 'cancelled'];
+             data.status in ['pending', 'paid', 'in-progress', 'completed', 'cancelled'] &&
+             (!('assignedExpertId' in data) || data.assignedExpertId is string || data.assignedExpertId == null) &&
+             (!('assignedExpertName' in data) || data.assignedExpertName is string || data.assignedExpertName == null);
     }
 
     function isValidReview(data) {
@@ -132,9 +143,9 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      allow read: if isAuthenticated() && (isOwner(resource.data.clientId) || isAdmin());
+      allow read: if isAuthenticated() && (isOwner(resource.data.clientId) || isAdmin() || isOwner(resource.data.assignedExpertId));
       allow create: if isAuthenticated() && isOwner(request.resource.data.clientId) && isValidOrder(request.resource.data);
-      allow update: if isAuthenticated() && (isOwner(resource.data.clientId) || isAdmin()) && isValidOrder(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.clientId) || isAdmin() || isOwner(resource.data.assignedExpertId)) && isValidOrder(request.resource.data);
     }
 
     match /reviews/{reviewId} {

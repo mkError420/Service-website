@@ -9,7 +9,7 @@
         "email": { "type": "string", "format": "email" },
         "displayName": { "type": "string" },
         "photoURL": { "type": "string" },
-        "role": { "type": "string", "enum": ["client", "admin"] },
+        "role": { "type": "string", "enum": ["client", "admin", "employee"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role"]
@@ -26,7 +26,9 @@
         "category": { "type": "string", "enum": ["MERN Stack", "WordPress", "Video Editing", "Digital Marketing"] },
         "image": { "type": "string" },
         "features": { "type": "array", "items": { "type": "string" } },
-        "active": { "type": "boolean" }
+        "active": { "type": "boolean" },
+        "expertId": { "type": "string" },
+        "expertName": { "type": "string" }
       },
       "required": ["title", "description", "price", "category"]
     },
@@ -42,6 +44,8 @@
         "price": { "type": "number" },
         "status": { "type": "string", "enum": ["pending", "paid", "in-progress", "completed", "cancelled"] },
         "paymentId": { "type": "string" },
+        "assignedExpertId": { "type": "string" },
+        "assignedExpertName": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

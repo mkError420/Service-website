@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, Timestamp, where } from 'firebase/firestore';
 import { Service, Order, UserProfile } from '../types';
 import { seedServices } from '../lib/seedData';
 import { 
@@ -25,6 +25,8 @@ import { toast } from 'sonner';
 export default function AdminDashboard() {
   const [services, setServices] = useState<Service[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [employees, setEmployees] = useState<UserProfile[]>([]);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -45,7 +47,9 @@ export default function AdminDashboard() {
     category: 'MERN Stack',
     image: '',
     features: '',
-    active: true
+    active: true,
+    expertId: '',
+    expertName: ''
   });
 
   useEffect(() => {
@@ -61,9 +65,21 @@ export default function AdminDashboard() {
       setLoading(false);
     });
 
+    const qEmployees = query(collection(db, 'users'), where('role', '==', 'employee'));
+    const unsubEmployees = onSnapshot(qEmployees, (snapshot) => {
+      setEmployees(snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile)));
+    });
+
+    const qAllUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+    const unsubAllUsers = onSnapshot(qAllUsers, (snapshot) => {
+      setAllUsers(snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile)));
+    });
+
     return () => {
       unsubServices();
       unsubOrders();
+      unsubEmployees();
+      unsubAllUsers();
     };
   }, []);
 
@@ -77,7 +93,9 @@ export default function AdminDashboard() {
         category: service.category,
         image: service.image || '',
         features: service.features?.join(', ') || '',
-        active: service.active
+        active: service.active,
+        expertId: service.expertId || '',
+        expertName: service.expertName || ''
       });
     } else {
       setEditingService(null);
@@ -88,7 +106,9 @@ export default function AdminDashboard() {
         category: 'MERN Stack',
         image: '',
         features: '',
-        active: true
+        active: true,
+        expertId: '',
+        expertName: ''
       });
     }
     setIsModalOpen(true);
@@ -97,8 +117,10 @@ export default function AdminDashboard() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const selectedExpert = employees.find(emp => emp.uid === formData.expertId);
       const serviceData = {
         ...formData,
+        expertName: selectedExpert ? (selectedExpert.displayName || selectedExpert.email) : '',
         features: formData.features.split(',').map(f => f.trim()).filter(f => f !== '')
       };
 
@@ -136,6 +158,29 @@ export default function AdminDashboard() {
       toast.success(`Order status updated to ${status}`);
     } catch (error) {
       toast.error("Failed to update status");
+    }
+  };
+
+  const assignOrder = async (orderId: string, employeeId: string) => {
+    try {
+      const employee = employees.find(e => e.uid === employeeId);
+      await updateDoc(doc(db, 'orders', orderId), {
+        assignedExpertId: employeeId || null,
+        assignedExpertName: employee?.displayName || employee?.email || 'Unassigned',
+        updatedAt: Timestamp.now()
+      });
+      toast.success(employeeId ? `Assigned to ${employee?.displayName || employee?.email}` : "Expert unassigned");
+    } catch (error) {
+      toast.error("Failed to assign expert");
+    }
+  };
+
+  const updateUserRole = async (uid: string, role: string) => {
+    try {
+      await updateDoc(doc(db, 'users', uid), { role });
+      toast.success(`User role updated to ${role}`);
+    } catch (error) {
+      toast.error("Failed to update user role");
     }
   };
 
@@ -266,7 +311,15 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <h3 className="text-xl font-bold mb-2">{service.title}</h3>
-              <p className="text-[#9E9E9E] text-xs font-bold uppercase tracking-widest mb-4">{service.category}</p>
+              <div className="flex flex-col space-y-1 mb-4">
+                <p className="text-[#9E9E9E] text-[10px] font-bold uppercase tracking-widest">{service.category}</p>
+                {service.expertName && (
+                  <p className="text-[#F27D26] text-[10px] font-black uppercase tracking-widest flex items-center">
+                    <ShieldCheck size={12} className="mr-1" />
+                    Expert: {service.expertName}
+                  </p>
+                )}
+              </div>
               <div className="flex justify-between items-center pt-6 border-t border-gray-50">
                 <span className="text-2xl font-black text-[#1A1A1A]">${service.price}</span>
                 <div className="flex space-x-2">
@@ -295,7 +348,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Orders Management */}
-      <div className="bg-[#1A1A1A] rounded-[60px] p-12 md:p-20 text-white overflow-hidden">
+      <div className="bg-[#1A1A1A] rounded-[60px] p-12 md:p-20 text-white overflow-hidden mb-24">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-8">
           <h2 className="text-3xl md:text-5xl font-black tracking-tight flex items-center">
             <ShoppingBag size={40} className="text-[#F27D26] mr-6" />
@@ -336,6 +389,7 @@ export default function AdminDashboard() {
                 <th className="pb-8 text-xs font-bold uppercase tracking-widest text-gray-500">Order & Client</th>
                 <th className="pb-8 text-xs font-bold uppercase tracking-widest text-gray-500">Service</th>
                 <th className="pb-8 text-xs font-bold uppercase tracking-widest text-gray-500">Status</th>
+                <th className="pb-8 text-xs font-bold uppercase tracking-widest text-gray-500">Assigned Expert</th>
                 <th className="pb-8 text-xs font-bold uppercase tracking-widest text-gray-500 text-right">Actions</th>
               </tr>
             </thead>
@@ -362,6 +416,20 @@ export default function AdminDashboard() {
                         ))}
                       </select>
                     </td>
+                    <td className="py-8">
+                      <select 
+                        value={order.assignedExpertId || ''}
+                        onChange={(e) => assignOrder(order.id, e.target.value)}
+                        className="bg-white/10 border-transparent rounded-xl text-xs font-bold uppercase tracking-widest px-4 py-2 focus:ring-0 focus:border-[#F27D26] cursor-pointer w-full max-w-[150px]"
+                      >
+                        <option value="" className="bg-[#1A1A1A]">Unassigned</option>
+                        {employees.map(emp => (
+                          <option key={emp.uid} value={emp.uid} className="bg-[#1A1A1A]">
+                            {emp.displayName || emp.email}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="py-8 text-right">
                       <button 
                         onClick={() => setSelectedOrder(order)}
@@ -374,11 +442,63 @@ export default function AdminDashboard() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="py-20 text-center text-gray-500 font-medium">
+                  <td colSpan={5} className="py-20 text-center text-gray-500 font-medium">
                     No orders match your criteria.
                   </td>
                 </tr>
               )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* User Management */}
+      <div className="mb-24">
+        <div className="flex items-center mb-10">
+          <h2 className="text-3xl font-black flex items-center">
+            <Users size={28} className="text-[#F27D26] mr-4" />
+            User Management
+          </h2>
+        </div>
+        
+        <div className="bg-white rounded-[40px] p-10 border border-gray-100 shadow-xl shadow-black/5 overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="pb-8 text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">User</th>
+                <th className="pb-8 text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Email</th>
+                <th className="pb-8 text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Role</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {allUsers.map((user) => (
+                <tr key={user.uid} className="group hover:bg-gray-50/50 transition-colors">
+                  <td className="py-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                        {user.photoURL ? (
+                          <img src={user.photoURL} alt={user.displayName} className="w-full h-full object-cover" />
+                        ) : (
+                          <Users size={20} className="text-gray-400" />
+                        )}
+                      </div>
+                      <p className="font-bold text-[#1A1A1A]">{user.displayName || 'Anonymous'}</p>
+                    </div>
+                  </td>
+                  <td className="py-6 font-medium text-[#4A4A4A]">{user.email}</td>
+                  <td className="py-6">
+                    <select 
+                      value={user.role}
+                      onChange={(e) => updateUserRole(user.uid, e.target.value)}
+                      className="bg-gray-100 border-transparent rounded-xl text-xs font-bold uppercase tracking-widest px-4 py-2 focus:ring-0 focus:border-[#F27D26] cursor-pointer"
+                    >
+                      <option value="client">Client</option>
+                      <option value="employee">Employee</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -427,6 +547,11 @@ export default function AdminDashboard() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Client UID</p>
                   <p className="font-medium text-[#4A4A4A] break-all">{selectedOrder.clientId}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Assigned Expert</p>
+                  <p className="font-bold text-[#1A1A1A]">{selectedOrder.assignedExpertName || 'Not Assigned'}</p>
                 </div>
 
                 <div className="pt-8 border-t border-gray-100 flex gap-4">
@@ -618,15 +743,32 @@ export default function AdminDashboard() {
                   />
                 </div>
 
-                <div className="flex items-center space-x-4">
-                  <input 
-                    type="checkbox" 
-                    id="active"
-                    className="w-6 h-6 rounded-lg border-gray-200 text-[#F27D26] focus:ring-[#F27D26]"
-                    checked={formData.active}
-                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                  />
-                  <label htmlFor="active" className="text-sm font-bold text-[#1A1A1A]">Active and Visible to Clients</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Assigned Expert</label>
+                    <select 
+                      className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-bold"
+                      value={formData.expertId}
+                      onChange={(e) => setFormData({ ...formData, expertId: e.target.value })}
+                    >
+                      <option value="">No Default Expert</option>
+                      {employees.map(emp => (
+                        <option key={emp.uid} value={emp.uid}>
+                          {emp.displayName || emp.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center space-x-4 pt-8">
+                    <input 
+                      type="checkbox" 
+                      id="active"
+                      className="w-6 h-6 rounded-lg border-gray-200 text-[#F27D26] focus:ring-[#F27D26]"
+                      checked={formData.active}
+                      onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                    />
+                    <label htmlFor="active" className="text-sm font-bold text-[#1A1A1A]">Active and Visible to Clients</label>
+                  </div>
                 </div>
 
                 <button 

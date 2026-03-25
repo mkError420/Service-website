@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
 
-export type UserRole = 'client' | 'admin';
+export type UserRole = 'client' | 'admin' | 'employee';
 
 export interface UserProfile {
   uid: string;
@@ -20,6 +20,8 @@ export interface Service {
   image?: string;
   features?: string[];
   active: boolean;
+  expertId?: string; // Default expert for this service
+  expertName?: string;
 }
 
 export interface Order {
@@ -30,6 +32,8 @@ export interface Order {
   price: number;
   status: 'pending' | 'paid' | 'in-progress' | 'completed' | 'cancelled';
   paymentId?: string;
+  assignedExpertId?: string; // Employee/Expert UID
+  assignedExpertName?: string; // Employee/Expert Name
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

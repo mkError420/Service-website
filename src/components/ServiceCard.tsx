@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Service } from '../types';
-import { ArrowRight, Star, Clock, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Star, Clock, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface ServiceCardProps {
@@ -28,10 +28,16 @@ export default function ServiceCard({ service, index }: ServiceCardProps) {
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
           />
-          <div className="absolute top-4 left-4">
-            <span className="bg-white/90 backdrop-blur-md text-[#1A1A1A] px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
+          <div className="absolute top-4 left-4 flex flex-col gap-2">
+            <span className="bg-white/90 backdrop-blur-md text-[#1A1A1A] px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm">
               {service.category}
             </span>
+            {service.expertName && (
+              <span className="bg-[#F27D26]/90 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm flex items-center">
+                <ShieldCheck size={12} className="mr-1" />
+                Expert: {service.expertName}
+              </span>
+            )}
           </div>
         </div>
 

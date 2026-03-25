@@ -56,6 +56,8 @@ export default function ServiceDetail() {
         serviceTitle: service.title,
         price: service.price,
         status: 'pending',
+        assignedExpertId: service.expertId || null,
+        assignedExpertName: service.expertName || null,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       };
@@ -264,16 +266,18 @@ export default function ServiceDetail() {
             </motion.div>
 
             {/* Expert Profile Mini */}
-            <div className="mt-8 bg-[#1A1A1A] rounded-[40px] p-8 text-white flex items-center space-x-6">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-[#F27D26]">
-                <img src="https://i.pravatar.cc/150?u=expert" alt="Expert" referrerPolicy="no-referrer" />
+            {service.expertName && (
+              <div className="mt-8 bg-[#1A1A1A] rounded-[40px] p-8 text-white flex items-center space-x-6">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-[#F27D26] bg-gray-800 flex items-center justify-center">
+                  <ShieldCheck size={32} className="text-[#F27D26]" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#F27D26] mb-1">Assigned Expert</p>
+                  <h4 className="text-xl font-bold">{service.expertName}</h4>
+                  <p className="text-xs text-gray-400">Verified Professional</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-[#F27D26] mb-1">Assigned Expert</p>
-                <h4 className="text-xl font-bold">Alex Rivera</h4>
-                <p className="text-xs text-gray-400">Senior Full-stack Developer</p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
