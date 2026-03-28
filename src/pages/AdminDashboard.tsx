@@ -887,74 +887,67 @@ export default function AdminDashboard() {
                     <h3 className="text-sm font-black uppercase tracking-widest text-[#9E9E9E]">Active Conversations</h3>
                   </div>
                   <div className="flex-grow overflow-y-auto p-4 space-y-2">
-                    {/* General Inquiries */}
-                    {Array.from(new Set([
-                      ...allMessages.filter(m => !m.orderId).map(m => m.senderId),
-                      ...allMessages.filter(m => !m.orderId).map(m => m.receiverId)
-                    ]))
-                      .filter(uid => uid !== auth.currentUser?.uid && uid !== 'admin' && uid !== '')
-                      .map(uid => {
-                        const chatId = `user_${uid}`;
-                        const userProfile = allUsers.find(u => u.uid === uid);
+                    {(() => {
+                      // Prepare all conversations
+                      const generalInquiryUids = Array.from(new Set([
+                        ...allMessages.filter(m => !m.orderId).map(m => m.senderId),
+                        ...allMessages.filter(m => !m.orderId).map(m => m.receiverId)
+                      ])).filter(uid => uid !== auth.currentUser?.uid && uid !== 'admin' && uid !== '');
+
+                      const generalChats = generalInquiryUids.map(uid => {
                         const userMsgs = allMessages.filter(m => !m.orderId && (m.senderId === uid || m.receiverId === uid || (m.receiverId === 'admin' && m.senderId === uid)));
                         const lastMsg = userMsgs.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())[0];
-                        
-                        return (
-                          <button 
-                            key={chatId}
-                            onClick={() => setSelectedChatId(chatId)}
-                            className={`w-full p-4 rounded-2xl transition-all text-left border group ${
-                              selectedChatId === chatId 
-                                ? 'bg-[#F27D26]/5 border-[#F27D26]/20' 
-                                : 'hover:bg-gray-50 border-transparent hover:border-gray-100'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start mb-1">
-                              <p className="font-black text-sm text-[#1A1A1A]">General Inquiry</p>
-                              {lastMsg && (
-                                <span className="text-[10px] font-bold text-[#9E9E9E]">
-                                  {lastMsg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs font-bold text-[#F27D26] mb-1">
-                              {userProfile?.displayName || userProfile?.email || `User: ${uid.slice(0, 8)}`}
-                            </p>
-                            <p className="text-xs text-[#4A4A4A] line-clamp-1 group-hover:text-[#1A1A1A] transition-colors">
-                              {lastMsg?.text || 'No messages yet'}
-                            </p>
-                          </button>
-                        );
-                      })}
+                        return {
+                          id: `user_${uid}`,
+                          type: 'general',
+                          title: 'General Inquiry',
+                          subtitle: allUsers.find(u => u.uid === uid)?.displayName || allUsers.find(u => u.uid === uid)?.email || `User: ${uid.slice(0, 8)}`,
+                          lastMsg,
+                          lastTime: lastMsg?.createdAt?.toMillis() || 0
+                        };
+                      });
 
-                    {/* Order Chats */}
-                    {orders.filter(o => o.status !== 'cancelled').map(order => {
-                      const lastMsg = allMessages.filter(m => m.orderId === order.id).pop();
-                      return (
+                      const orderChats = orders.filter(o => o.status !== 'cancelled').map(order => {
+                        const orderMsgs = allMessages.filter(m => m.orderId === order.id);
+                        const lastMsg = orderMsgs.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())[0];
+                        return {
+                          id: order.id,
+                          type: 'order',
+                          title: `#${order.id.slice(0, 8)}`,
+                          subtitle: order.serviceTitle,
+                          lastMsg,
+                          lastTime: lastMsg?.createdAt?.toMillis() || (order.createdAt as any)?.toMillis() || 0
+                        };
+                      });
+
+                      // Combine and sort by last message time (descending)
+                      const allChats = [...generalChats, ...orderChats].sort((a, b) => b.lastTime - a.lastTime);
+
+                      return allChats.map(chat => (
                         <button 
-                          key={order.id}
-                          onClick={() => setSelectedChatId(order.id)}
+                          key={chat.id}
+                          onClick={() => setSelectedChatId(chat.id)}
                           className={`w-full p-4 rounded-2xl transition-all text-left border group ${
-                            selectedChatId === order.id 
+                            selectedChatId === chat.id 
                               ? 'bg-[#F27D26]/5 border-[#F27D26]/20' 
                               : 'hover:bg-gray-50 border-transparent hover:border-gray-100'
                           }`}
                         >
                           <div className="flex justify-between items-start mb-1">
-                            <p className="font-black text-sm text-[#1A1A1A]">#{order.id.slice(0, 8)}</p>
-                            {lastMsg && (
+                            <p className="font-black text-sm text-[#1A1A1A]">{chat.title}</p>
+                            {chat.lastMsg && (
                               <span className="text-[10px] font-bold text-[#9E9E9E]">
-                                {lastMsg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {chat.lastMsg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             )}
                           </div>
-                          <p className="text-xs font-bold text-[#F27D26] mb-1">{order.serviceTitle}</p>
+                          <p className="text-xs font-bold text-[#F27D26] mb-1">{chat.subtitle}</p>
                           <p className="text-xs text-[#4A4A4A] line-clamp-1 group-hover:text-[#1A1A1A] transition-colors">
-                            {lastMsg ? lastMsg.text : (order.clientId === 'guest' ? order.guestName : 'Client ID: ' + order.clientId.slice(0, 8))}
+                            {chat.lastMsg?.text || 'No messages yet'}
                           </p>
                         </button>
-                      );
-                    })}
+                      ));
+                    })()}
                   </div>
                 </div>
 

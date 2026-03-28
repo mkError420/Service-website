@@ -141,87 +141,72 @@ export default function Chat() {
             </h2>
           </div>
           <div className="flex-grow overflow-y-auto p-4 space-y-2">
-            {/* General Support Chat */}
             {(() => {
-              const lastMsg = messages.filter(m => !m.orderId).pop();
-              return (
-                <button 
-                  onClick={() => {
-                    setSelectedChatId('general');
-                    setShowSidebar(false);
-                  }}
-                  className={`w-full p-4 rounded-3xl transition-all text-left border ${
-                    selectedChatId === 'general' 
-                      ? 'bg-white border-[#F27D26]/20 shadow-lg shadow-[#F27D26]/5' 
-                      : 'border-transparent hover:bg-white/50'
-                  }`}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-[#1A1A1A] rounded-2xl flex items-center justify-center text-white">
-                      <ShieldCheck size={24} />
-                    </div>
-                    <div className="flex-grow min-w-0">
-                      <div className="flex justify-between items-start">
-                        <p className="font-black text-sm truncate">General Support</p>
-                        {lastMsg && (
-                          <span className="text-[10px] font-bold text-[#9E9E9E]">
-                            {lastMsg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-[#9E9E9E] font-bold uppercase tracking-widest mb-1">Admin Team</p>
-                      {lastMsg && (
-                        <p className="text-xs text-[#4A4A4A] truncate font-medium">{lastMsg.text}</p>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })()}
+              // Prepare all conversations
+              const generalLastMsg = messages.filter(m => !m.orderId).pop();
+              const generalChat = {
+                id: 'general',
+                type: 'general',
+                title: 'General Support',
+                subtitle: 'Admin Team',
+                icon: <ShieldCheck size={24} />,
+                lastMsg: generalLastMsg,
+                lastTime: generalLastMsg?.createdAt?.toMillis() || 0
+              };
 
-            {/* Order Chats */}
-            {orders.length > 0 && (
-              <div className="pt-4 pb-2 px-4">
-                <p className="text-[10px] font-black text-[#9E9E9E] uppercase tracking-widest">Your Orders</p>
-              </div>
-            )}
-            {orders.map(order => {
-              const lastMsg = messages.filter(m => m.orderId === order.id).pop();
-              return (
+              const orderChats = orders.map(order => {
+                const orderLastMsg = messages.filter(m => m.orderId === order.id).pop();
+                return {
+                  id: order.id,
+                  type: 'order',
+                  title: order.serviceTitle,
+                  subtitle: `Order #${order.id.slice(0, 8)}`,
+                  icon: <Package size={24} />,
+                  lastMsg: orderLastMsg,
+                  lastTime: orderLastMsg?.createdAt?.toMillis() || (order.createdAt as any)?.toMillis() || 0
+                };
+              });
+
+              // Combine and sort by last message time (descending)
+              const allChats = [generalChat, ...orderChats].sort((a, b) => b.lastTime - a.lastTime);
+
+              return allChats.map(chat => (
                 <button 
-                  key={order.id}
+                  key={chat.id}
                   onClick={() => {
-                    setSelectedChatId(order.id);
+                    setSelectedChatId(chat.id);
                     setShowSidebar(false);
                   }}
                   className={`w-full p-4 rounded-3xl transition-all text-left border ${
-                    selectedChatId === order.id 
+                    selectedChatId === chat.id 
                       ? 'bg-white border-[#F27D26]/20 shadow-lg shadow-[#F27D26]/5' 
                       : 'border-transparent hover:bg-white/50'
                   }`}
                 >
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-[#F27D26]/10 rounded-2xl flex items-center justify-center text-[#F27D26]">
-                      <Package size={24} />
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                      chat.type === 'general' ? 'bg-[#1A1A1A] text-white' : 'bg-[#F27D26]/10 text-[#F27D26]'
+                    }`}>
+                      {chat.icon}
                     </div>
                     <div className="flex-grow min-w-0">
                       <div className="flex justify-between items-start">
-                        <p className="font-black text-sm truncate">{order.serviceTitle}</p>
-                        {lastMsg && (
+                        <p className="font-black text-sm truncate">{chat.title}</p>
+                        {chat.lastMsg && (
                           <span className="text-[10px] font-bold text-[#9E9E9E]">
-                            {lastMsg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {chat.lastMsg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-[#9E9E9E] font-bold uppercase tracking-widest mb-1">Order #{order.id.slice(0, 8)}</p>
-                      {lastMsg && (
-                        <p className="text-xs text-[#4A4A4A] truncate font-medium">{lastMsg.text}</p>
+                      <p className="text-[10px] text-[#9E9E9E] font-bold uppercase tracking-widest mb-1">{chat.subtitle}</p>
+                      {chat.lastMsg && (
+                        <p className="text-xs text-[#4A4A4A] truncate font-medium">{chat.lastMsg.text}</p>
                       )}
                     </div>
                   </div>
                 </button>
-              );
-            })}
+              ));
+            })()}
           </div>
         </div>
 
