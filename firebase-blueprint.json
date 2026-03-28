@@ -39,6 +39,10 @@
       "properties": {
         "id": { "type": "string" },
         "clientId": { "type": "string" },
+        "guestName": { "type": "string" },
+        "guestEmail": { "type": "string" },
+        "guestPhone": { "type": "string" },
+        "projectDetails": { "type": "string" },
         "serviceId": { "type": "string" },
         "serviceTitle": { "type": "string" },
         "price": { "type": "number" },

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db, auth, signInWithGoogle } from '../firebase';
-import { doc, getDoc, addDoc, collection, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { Service, Review } from '../types';
 import { 
   Star, 
@@ -13,16 +13,80 @@ import {
   ChevronLeft,
   Zap,
   CreditCard,
-  Lock
+  Lock,
+  X,
+  User,
+  Mail,
+  Phone,
+  FileText
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  toast.error("Booking failed. Please try again.");
+  throw new Error(JSON.stringify(errInfo));
+}
 
 export default function ServiceDetail() {
   const { id } = useParams();
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [guestInfo, setGuestInfo] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    projectDetails: ''
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,61 +102,57 @@ export default function ServiceDetail() {
     fetchService();
   }, [id]);
 
-  const handleBooking = async () => {
-    if (!auth.currentUser) {
-      toast.error("Please sign in to book a service");
-      await signInWithGoogle();
-      return;
-    }
-
+  const handleBooking = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
     if (!service) return;
 
     setBooking(true);
-    try {
-      // Create order in Firestore
-      const orderData = {
-        clientId: auth.currentUser.uid,
-        serviceId: service.id,
-        serviceTitle: service.title,
-        price: service.price,
-        status: 'pending',
-        assignedExpertId: service.expertId || null,
-        assignedExpertName: service.expertName || null,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      };
+    const orderData: any = {
+      clientId: auth.currentUser?.uid || 'guest',
+      serviceId: service.id,
+      serviceTitle: service.title,
+      price: service.price,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
 
+    // Add guest info if provided or if guest
+    const name = guestInfo.name || auth.currentUser?.displayName;
+    if (name) orderData.guestName = name;
+
+    const email = guestInfo.email || auth.currentUser?.email;
+    if (email) orderData.guestEmail = email;
+
+    if (guestInfo.phone) orderData.guestPhone = guestInfo.phone;
+    if (guestInfo.projectDetails) orderData.projectDetails = guestInfo.projectDetails;
+
+    // Add expert info if assigned
+    if (service.expertId) {
+      orderData.assignedExpertId = service.expertId;
+      orderData.assignedExpertName = service.expertName;
+    }
+
+    console.log("Attempting to create order with data:", orderData);
+
+    try {
       const docRef = await addDoc(collection(db, 'orders'), orderData);
       
-      // Simulate Stripe Checkout
-      toast.success("Order created! Redirecting to checkout...");
+      toast.success("Order created successfully!");
+      setShowBookingForm(false);
       
-      // In a real app, we'd call our backend to create a Stripe session
-      /*
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          serviceName: service.title,
-          price: service.price,
-          orderId: docRef.id,
-          successUrl: `${window.location.origin}/dashboard?success=true`,
-          cancelUrl: `${window.location.origin}/services/${service.id}?cancelled=true`
-        })
-      });
-      const session = await response.json();
-      const stripe = await loadStripe(process.env.VITE_STRIPE_PUBLIC_KEY!);
-      await stripe?.redirectToCheckout({ sessionId: session.id });
-      */
-
-      // For demo, we'll just navigate to dashboard
+      // For demo, we'll just navigate to dashboard if logged in, or home if guest
       setTimeout(() => {
-        navigate('/dashboard');
+        if (auth.currentUser) {
+          navigate('/dashboard');
+        } else {
+          navigate('/');
+        }
       }, 2000);
 
     } catch (error) {
-      console.error("Booking failed", error);
-      toast.error("Failed to create order. Please try again.");
+      handleFirestoreError(error, OperationType.CREATE, 'orders');
     } finally {
       setBooking(false);
     }
@@ -230,12 +290,11 @@ export default function ServiceDetail() {
 
               <div className="space-y-4 mb-10">
                 <button 
-                  onClick={handleBooking}
-                  disabled={booking}
-                  className="w-full bg-[#1A1A1A] text-white py-6 rounded-2xl text-lg font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 flex items-center justify-center group disabled:opacity-50"
+                  onClick={() => setShowBookingForm(true)}
+                  className="w-full bg-[#1A1A1A] text-white py-6 rounded-2xl text-lg font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 flex items-center justify-center group"
                 >
-                  {booking ? 'Processing...' : 'Book Service Now'}
-                  {!booking && <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" />}
+                  Book Service Now
+                  <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" />
                 </button>
                 <button className="w-full bg-gray-50 text-[#1A1A1A] py-6 rounded-2xl text-lg font-bold hover:bg-gray-100 transition-all flex items-center justify-center">
                   <MessageSquare size={20} className="mr-2" />
@@ -281,6 +340,110 @@ export default function ServiceDetail() {
           </div>
         </div>
       </div>
+      {/* Booking Form Modal */}
+      {showBookingForm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            onClick={() => setShowBookingForm(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-[40px] w-full max-w-2xl overflow-hidden shadow-2xl relative z-10"
+          >
+            <div className="p-8 md:p-12">
+              <div className="flex justify-between items-center mb-10">
+                <div>
+                  <h2 className="text-3xl font-black tracking-tight">Complete Your Booking</h2>
+                  <p className="text-[#9E9E9E] font-medium mt-1">No account required. We'll contact you via email.</p>
+                </div>
+                <button 
+                  onClick={() => setShowBookingForm(false)}
+                  className="p-3 hover:bg-gray-100 rounded-2xl transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleBooking} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Full Name</label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={20} />
+                      <input 
+                        type="text" 
+                        required
+                        value={guestInfo.name}
+                        onChange={(e) => setGuestInfo({...guestInfo, name: e.target.value})}
+                        placeholder="John Doe"
+                        className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={20} />
+                      <input 
+                        type="email" 
+                        required
+                        value={guestInfo.email}
+                        onChange={(e) => setGuestInfo({...guestInfo, email: e.target.value})}
+                        placeholder="john@example.com"
+                        className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Phone Number (Optional)</label>
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={20} />
+                    <input 
+                      type="tel" 
+                      value={guestInfo.phone}
+                      onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
+                      placeholder="+1 (555) 000-0000"
+                      className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Project Details</label>
+                  <div className="relative">
+                    <FileText className="absolute left-4 top-4 text-[#9E9E9E]" size={20} />
+                    <textarea 
+                      required
+                      value={guestInfo.projectDetails}
+                      onChange={(e) => setGuestInfo({...guestInfo, projectDetails: e.target.value})}
+                      placeholder="Tell us more about your project requirements..."
+                      rows={4}
+                      className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium resize-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button 
+                    type="submit"
+                    disabled={booking}
+                    className="w-full bg-[#1A1A1A] text-white py-6 rounded-2xl text-lg font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 flex items-center justify-center group disabled:opacity-50"
+                  >
+                    {booking ? 'Processing...' : `Confirm Booking - $${service.price}`}
+                    {!booking && <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" />}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

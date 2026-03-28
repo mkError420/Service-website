@@ -30,6 +30,10 @@ service cloud.firestore {
     // Document ID: orderId
     // Fields:
     //   - clientId: string (required)
+    //   - guestName: string (optional)
+    //   - guestEmail: string (optional)
+    //   - guestPhone: string (optional)
+    //   - projectDetails: string (optional)
     //   - serviceId: string (required)
     //   - serviceTitle: string (required)
     //   - price: number (required)
@@ -105,13 +109,22 @@ service cloud.firestore {
              (!('expertName' in data) || data.expertName is string || data.expertName == null);
     }
 
+    function isValidEmail(email) {
+      return email is string && email.size() >= 3 && email.contains("@");
+    }
+
     function isValidOrder(data) {
       return data.clientId is string && data.clientId.size() > 0 &&
              data.serviceId is string && data.serviceId.size() > 0 &&
+             data.serviceTitle is string && data.serviceTitle.size() > 0 &&
              data.price is number && data.price >= 0 &&
              data.status in ['pending', 'paid', 'in-progress', 'completed', 'cancelled'] &&
-             (!('assignedExpertId' in data) || data.assignedExpertId is string || data.assignedExpertId == null) &&
-             (!('assignedExpertName' in data) || data.assignedExpertName is string || data.assignedExpertName == null);
+             (!('guestName' in data) || (data.guestName is string && data.guestName.size() < 100)) &&
+             (!('guestEmail' in data) || (data.guestEmail is string && data.guestEmail.size() > 0)) &&
+             (!('guestPhone' in data) || (data.guestPhone is string && data.guestPhone.size() < 20)) &&
+             (!('projectDetails' in data) || (data.projectDetails is string && data.projectDetails.size() < 5000)) &&
+             (!('assignedExpertId' in data) || (data.assignedExpertId is string && data.assignedExpertId.size() > 0)) &&
+             (!('assignedExpertName' in data) || (data.assignedExpertName is string && data.assignedExpertName.size() > 0));
     }
 
     function isValidReview(data) {
@@ -144,8 +157,8 @@ service cloud.firestore {
 
     match /orders/{orderId} {
       allow read: if isAuthenticated() && (isOwner(resource.data.clientId) || isAdmin() || isOwner(resource.data.assignedExpertId));
-      allow create: if isAuthenticated() && isOwner(request.resource.data.clientId) && isValidOrder(request.resource.data);
-      allow update: if isAuthenticated() && (isOwner(resource.data.clientId) || isAdmin() || isOwner(resource.data.assignedExpertId)) && isValidOrder(request.resource.data);
+      allow create: if isValidOrder(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || isOwner(resource.data.assignedExpertId)) && isValidOrder(request.resource.data);
     }
 
     match /reviews/{reviewId} {

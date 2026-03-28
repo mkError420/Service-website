@@ -27,6 +27,10 @@ export interface Service {
 export interface Order {
   id: string;
   clientId: string;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  projectDetails?: string;
   serviceId: string;
   serviceTitle: string;
   price: number;

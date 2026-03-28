@@ -399,7 +399,13 @@ export default function AdminDashboard() {
                   <tr key={order.id} className="group hover:bg-white/5 transition-colors">
                     <td className="py-8">
                       <p className="font-bold text-lg">{order.id.slice(0, 8)}</p>
-                      <p className="text-xs text-gray-400 font-medium">UID: {order.clientId.slice(0, 8)}</p>
+                      <p className="text-xs text-gray-400 font-medium">
+                        {order.clientId === 'guest' ? (
+                          <span className="text-[#F27D26]">Guest: {order.guestName}</span>
+                        ) : (
+                          `UID: ${order.clientId.slice(0, 8)}`
+                        )}
+                      </p>
                     </td>
                     <td className="py-8">
                       <p className="font-bold">{order.serviceTitle}</p>
@@ -545,9 +551,26 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Client UID</p>
-                  <p className="font-medium text-[#4A4A4A] break-all">{selectedOrder.clientId}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Client Info</p>
+                  {selectedOrder.clientId === 'guest' ? (
+                    <div className="bg-gray-50 p-4 rounded-2xl space-y-2">
+                      <p className="font-bold text-[#1A1A1A]">{selectedOrder.guestName}</p>
+                      <p className="text-sm text-[#4A4A4A]">{selectedOrder.guestEmail}</p>
+                      {selectedOrder.guestPhone && <p className="text-sm text-[#4A4A4A]">{selectedOrder.guestPhone}</p>}
+                    </div>
+                  ) : (
+                    <p className="font-medium text-[#4A4A4A] break-all">{selectedOrder.clientId}</p>
+                  )}
                 </div>
+
+                {selectedOrder.projectDetails && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Project Details</p>
+                    <div className="bg-gray-50 p-4 rounded-2xl">
+                      <p className="text-sm text-[#4A4A4A] leading-relaxed whitespace-pre-wrap">{selectedOrder.projectDetails}</p>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Assigned Expert</p>
