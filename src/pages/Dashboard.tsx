@@ -98,11 +98,12 @@ export default function Dashboard() {
   };
 
   const activeOrders = orders.filter(o => ['paid', 'in-progress', 'pending'].includes(o.status));
-  const completedOrders = orders.filter(o => o.status === 'completed');
+  const historyOrders = orders.filter(o => ['completed', 'cancelled'].includes(o.status));
 
   const stats = [
     { label: 'Active Projects', value: activeOrders.length, icon: Clock, color: '#F27D26' },
-    { label: 'Completed', value: completedOrders.length, icon: CheckCircle2, color: '#10B981' },
+    { label: 'Completed', value: orders.filter(o => o.status === 'completed').length, icon: CheckCircle2, color: '#10B981' },
+    { label: 'Cancelled', value: orders.filter(o => o.status === 'cancelled').length, icon: XCircle, color: '#EF4444' },
     { label: 'Total Investment', value: `$${orders.reduce((acc, o) => acc + o.price, 0)}`, icon: DollarSign, color: '#1A1A1A' },
   ];
 
@@ -110,8 +111,8 @@ export default function Dashboard() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12 animate-pulse">
         <div className="h-12 w-64 bg-gray-100 rounded-2xl mb-12" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {[1, 2, 3].map(i => <div key={i} className="h-32 bg-gray-100 rounded-[32px]" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-gray-100 rounded-[32px]" />)}
         </div>
         <div className="h-96 bg-gray-100 rounded-[40px]" />
       </div>
@@ -191,7 +192,7 @@ export default function Dashboard() {
       {activeTab !== 'profile' && (
         <>
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
             {stats.map((stat, i) => (
               <motion.div 
                 key={i}
@@ -245,8 +246,8 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {(activeTab === 'projects' ? activeOrders : completedOrders).length > 0 ? (
-                    (activeTab === 'projects' ? activeOrders : completedOrders).map((order, i) => (
+                  {(activeTab === 'projects' ? activeOrders : historyOrders).length > 0 ? (
+                    (activeTab === 'projects' ? activeOrders : historyOrders).map((order, i) => (
                       <motion.tr 
                         key={order.id}
                         initial={{ opacity: 0 }}
