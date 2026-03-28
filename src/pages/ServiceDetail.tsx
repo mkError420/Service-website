@@ -22,6 +22,11 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = (import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY 
+  ? loadStripe((import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY) 
+  : null;
 
 enum OperationType {
   CREATE = 'create',
@@ -139,17 +144,50 @@ export default function ServiceDetail() {
     try {
       const docRef = await addDoc(collection(db, 'orders'), orderData);
       
-      toast.success("Order created successfully!");
-      setShowBookingForm(false);
-      
-      // For demo, we'll just navigate to dashboard if logged in, or home if guest
-      setTimeout(() => {
-        if (auth.currentUser) {
-          navigate('/dashboard');
-        } else {
-          navigate('/');
+      // If Stripe is configured, redirect to checkout
+      if (stripePromise) {
+        toast.loading("Redirecting to secure payment...");
+        
+        const response = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            serviceName: service.title,
+            price: service.price,
+            orderId: docRef.id,
+            successUrl: `${window.location.origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+            cancelUrl: window.location.href,
+          }),
+        });
+
+        const session = await response.json();
+        
+        if (session.error) {
+          throw new Error(session.error);
         }
-      }, 2000);
+
+        const stripe = await stripePromise;
+        if (stripe) {
+          const { error } = await (stripe as any).redirectToCheckout({
+            sessionId: session.id,
+          });
+          if (error) throw error;
+        }
+      } else {
+        // Fallback for demo if Stripe is not configured
+        toast.success("Order created successfully! (Demo Mode)");
+        setShowBookingForm(false);
+        
+        setTimeout(() => {
+          if (auth.currentUser) {
+            navigate('/dashboard');
+          } else {
+            navigate('/');
+          }
+        }, 2000);
+      }
 
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'orders');
