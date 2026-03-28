@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy, Timestamp, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { Order, UserProfile } from '../types';
+import { Order, UserProfile, ContactMessage } from '../types';
 import { 
   ShoppingBag, 
   Clock, 
@@ -22,7 +22,9 @@ import {
   LogOut,
   Camera,
   Save,
-  X
+  X,
+  HeadphonesIcon,
+  Reply
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -31,10 +33,12 @@ import { toast } from 'sonner';
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'projects' | 'history' | 'profile'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'history' | 'support' | 'profile'>('projects');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState('');
   const [showSuccessAlert, setShowSuccessAlert] = useState(!!searchParams.get('session_id'));
@@ -55,19 +59,34 @@ export default function Dashboard() {
     fetchProfile();
 
     // Fetch Orders
-    const q = query(
+    const qOrders = query(
       collection(db, 'orders'), 
       where('clientId', '==', auth.currentUser.uid),
       orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
       const ordersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
       setOrders(ordersData);
+    });
+
+    // Fetch Contact Messages
+    const qMessages = query(
+      collection(db, 'contact_messages'),
+      where('uid', '==', auth.currentUser.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribeMessages = onSnapshot(qMessages, (snapshot) => {
+      const messagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactMessage));
+      setContactMessages(messagesData);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeOrders();
+      unsubscribeMessages();
+    };
   }, []);
 
   const handleUpdateProfile = async () => {
@@ -179,6 +198,12 @@ export default function Dashboard() {
             className={`px-6 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-[#9E9E9E] hover:text-[#1A1A1A]'}`}
           >
             History
+          </button>
+          <button 
+            onClick={() => setActiveTab('support')}
+            className={`px-6 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'support' ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-[#9E9E9E] hover:text-[#1A1A1A]'}`}
+          >
+            Support
           </button>
           <button 
             onClick={() => setActiveTab('profile')}
@@ -322,6 +347,90 @@ export default function Dashboard() {
             </div>
           </div>
         </>
+      )}
+
+      {activeTab === 'support' && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-[40px] border border-gray-100 shadow-2xl shadow-black/5 overflow-hidden"
+        >
+          <div className="p-10 border-b border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <h2 className="text-2xl font-black flex items-center">
+              <HeadphonesIcon size={24} className="text-[#F27D26] mr-3" />
+              Support Requests
+            </h2>
+            <Link to="/contact" className="bg-[#1A1A1A] text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#F27D26] transition-all">
+              New Request
+            </Link>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-gray-50/50">
+                  <th className="px-10 py-6 text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Subject</th>
+                  <th className="px-10 py-6 text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Date</th>
+                  <th className="px-10 py-6 text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Status</th>
+                  <th className="px-10 py-6 text-xs font-bold uppercase tracking-widest text-[#9E9E9E] text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {contactMessages.length > 0 ? (
+                  contactMessages.map((msg, i) => (
+                    <motion.tr 
+                      key={msg.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="hover:bg-gray-50/30 transition-colors cursor-pointer"
+                      onClick={() => setSelectedMessage(msg)}
+                    >
+                      <td className="px-10 py-8">
+                        <div>
+                          <p className="font-bold text-[#1A1A1A]">{msg.subject}</p>
+                          <p className="text-xs text-[#9E9E9E] truncate max-w-xs">{msg.message}</p>
+                        </div>
+                      </td>
+                      <td className="px-10 py-8">
+                        <span className="text-sm font-medium text-[#4A4A4A]">
+                          {msg.createdAt.toDate().toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td className="px-10 py-8">
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                          msg.status === 'replied' ? 'text-green-600 bg-green-50 border-green-100' :
+                          msg.status === 'read' ? 'text-blue-600 bg-blue-50 border-blue-100' :
+                          'text-yellow-600 bg-yellow-50 border-yellow-100'
+                        }`}>
+                          {msg.status}
+                        </span>
+                      </td>
+                      <td className="px-10 py-8 text-right">
+                        <button className="p-3 bg-gray-50 rounded-xl text-[#1A1A1A] hover:bg-gray-100 transition-all">
+                          <ArrowRight size={18} />
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="px-10 py-24 text-center">
+                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <HeadphonesIcon size={32} className="text-gray-200" />
+                      </div>
+                      <h3 className="text-xl font-black text-[#1A1A1A] mb-2">No support requests</h3>
+                      <p className="text-[#9E9E9E] font-medium mb-8">Need help? Send us a message.</p>
+                      <Link to="/contact" className="inline-block bg-[#1A1A1A] text-white px-10 py-4 rounded-2xl font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10">
+                        Contact Support
+                      </Link>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
       )}
 
       {activeTab === 'profile' && (
@@ -561,6 +670,83 @@ export default function Dashboard() {
                       </Link>
                     </div>
                   </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Message Details Modal */}
+      <AnimatePresence>
+        {selectedMessage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedMessage(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[40px] w-full max-w-2xl overflow-hidden shadow-2xl relative z-10"
+            >
+              <div className="p-10">
+                <div className="flex justify-between items-start mb-10">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-[#F27D26]/10 rounded-[24px] flex items-center justify-center">
+                      <HeadphonesIcon size={32} className="text-[#F27D26]" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-black tracking-tight">{selectedMessage.subject}</h2>
+                      <p className="text-[#9E9E9E] font-bold uppercase tracking-widest text-xs">Sent on {selectedMessage.createdAt.toDate().toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedMessage(null)}
+                    className="p-3 hover:bg-gray-100 rounded-2xl transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="space-y-8">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] mb-3">Your Message</p>
+                    <div className="bg-gray-50 p-6 rounded-3xl">
+                      <p className="text-[#4A4A4A] leading-relaxed font-medium">
+                        {selectedMessage.message}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedMessage.replyContent ? (
+                    <div>
+                      <div className="flex items-center space-x-2 mb-3">
+                        <Reply size={16} className="text-[#F27D26]" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#F27D26]">Admin Reply</p>
+                        <span className="text-[10px] text-[#9E9E9E] font-bold">
+                          {selectedMessage.repliedAt?.toDate().toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="bg-[#1A1A1A] p-6 rounded-3xl text-white">
+                        <p className="leading-relaxed font-medium">
+                          {selectedMessage.replyContent}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white flex-shrink-0">
+                        <Clock size={20} />
+                      </div>
+                      <p className="text-blue-700 font-medium text-sm">
+                        Our support team is reviewing your message. We'll get back to you shortly.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>

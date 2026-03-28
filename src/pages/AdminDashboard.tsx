@@ -29,7 +29,8 @@ import {
   Calendar,
   DollarSign,
   Briefcase,
-  AlertTriangle
+  AlertTriangle,
+  Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -85,6 +86,9 @@ export default function AdminDashboard() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancellationNote, setCancellationNote] = useState('');
+  const [replyingMessageId, setReplyingMessageId] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
   
   // Settings State
   const [platformSettings, setPlatformSettings] = useState({
@@ -331,6 +335,46 @@ export default function AdminDashboard() {
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contact_messages/${id}`);
       toast.error("Failed to update message status");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReplySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyingMessageId || !replyContent.trim()) return;
+    setIsProcessing(true);
+    try {
+      const msg = contactMessages.find(m => m.id === replyingMessageId);
+      if (!msg) return;
+
+      // Update contact message status and add reply content
+      await updateDoc(doc(db, 'contact_messages', replyingMessageId), {
+        status: 'replied',
+        replyContent: replyContent,
+        repliedAt: Timestamp.now()
+      });
+
+      // If the sender is a registered user, also send a message to their chat
+      const user = allUsers.find(u => u.email === msg.email);
+      if (user) {
+        await addDoc(collection(db, 'messages'), {
+          senderId: 'admin',
+          receiverId: user.uid,
+          text: `RE: ${msg.subject}\n\n${replyContent}`,
+          createdAt: Timestamp.now()
+        });
+        toast.success("Reply sent and added to user chat");
+      } else {
+        toast.success("Reply saved successfully");
+      }
+
+      setIsReplyModalOpen(false);
+      setReplyContent('');
+      setReplyingMessageId(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `contact_messages/${replyingMessageId}`);
+      toast.error("Failed to send reply");
     } finally {
       setIsProcessing(false);
     }
@@ -1076,6 +1120,12 @@ export default function AdminDashboard() {
                             <td className="px-10 py-8 max-w-md">
                               <p className="font-bold text-[#1A1A1A] mb-1">{msg.subject}</p>
                               <p className="text-sm text-[#4A4A4A] line-clamp-2">{msg.message}</p>
+                              {msg.replyContent && (
+                                <div className="mt-4 p-4 bg-green-50/50 rounded-2xl border border-green-100/50">
+                                  <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">Admin Reply</p>
+                                  <p className="text-xs text-[#4A4A4A] italic line-clamp-2">{msg.replyContent}</p>
+                                </div>
+                              )}
                             </td>
                             <td className="px-10 py-8">
                               <p className="text-sm font-bold text-[#1A1A1A]">
@@ -1106,9 +1156,13 @@ export default function AdminDashboard() {
                                 )}
                                 {msg.status !== 'replied' && (
                                   <button 
-                                    onClick={() => updateMessageStatus(msg.id, 'replied')}
+                                    onClick={() => {
+                                      setReplyingMessageId(msg.id);
+                                      setReplyContent('');
+                                      setIsReplyModalOpen(true);
+                                    }}
                                     className="p-3 bg-green-50 text-green-600 rounded-2xl hover:bg-green-100 transition-all"
-                                    title="Mark as Replied"
+                                    title="Reply to Message"
                                   >
                                     <Mail size={18} />
                                   </button>
@@ -1399,6 +1453,76 @@ export default function AdminDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Reply Modal */}
+      {isReplyModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-[40px] w-full max-w-lg overflow-hidden shadow-2xl"
+          >
+            <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div>
+                <h3 className="text-xl font-black text-[#1A1A1A]">Reply to Message</h3>
+                <p className="text-xs font-bold text-[#9E9E9E] uppercase tracking-widest mt-1">
+                  {contactMessages.find(m => m.id === replyingMessageId)?.email}
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsReplyModalOpen(false)}
+                className="p-2 hover:bg-white rounded-xl transition-colors"
+              >
+                <X size={24} className="text-[#9E9E9E]" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleReplySubmit} className="p-8 space-y-6">
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                <p className="text-[10px] font-black text-[#9E9E9E] uppercase tracking-widest mb-2">Original Message</p>
+                <p className="text-sm text-[#4A4A4A] italic">
+                  "{contactMessages.find(m => m.id === replyingMessageId)?.message}"
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-[#9E9E9E] uppercase tracking-widest ml-4">Your Reply</label>
+                <textarea 
+                  required
+                  value={replyContent}
+                  onChange={(e) => setReplyContent(e.target.value)}
+                  placeholder="Type your reply here..."
+                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-3xl focus:ring-2 focus:ring-[#F27D26] min-h-[150px] text-sm font-medium"
+                />
+              </div>
+
+              <div className="flex space-x-4 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => setIsReplyModalOpen(false)}
+                  className="flex-1 px-8 py-4 rounded-3xl font-black text-sm text-[#4A4A4A] hover:bg-gray-100 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isProcessing}
+                  className="flex-1 px-8 py-4 bg-[#F27D26] text-white rounded-3xl font-black text-sm shadow-lg shadow-[#F27D26]/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isProcessing ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Send size={18} className="mr-2" />
+                      Send Reply
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>

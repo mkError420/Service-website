@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 
 export default function Contact() {
@@ -18,8 +18,10 @@ export default function Contact() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const user = auth.currentUser;
       await addDoc(collection(db, 'contact_messages'), {
         ...formData,
+        uid: user?.uid || null,
         status: 'new',
         createdAt: Timestamp.now()
       });

@@ -95,7 +95,9 @@
         "subject": { "type": "string" },
         "message": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["new", "read", "replied"] }
+        "status": { "type": "string", "enum": ["new", "read", "replied"] },
+        "replyContent": { "type": "string" },
+        "repliedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "email", "subject", "message", "status"]
     }

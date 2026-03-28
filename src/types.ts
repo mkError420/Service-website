@@ -64,10 +64,13 @@ export interface Message {
 
 export interface ContactMessage {
   id: string;
+  uid?: string;
   name: string;
   email: string;
   subject: string;
   message: string;
   createdAt: Timestamp;
   status: 'new' | 'read' | 'replied';
+  replyContent?: string;
+  repliedAt?: Timestamp;
 }
