@@ -87,13 +87,15 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "mk.rabbani.cse@gmail.com" && request.auth.token.email_verified == true));
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (request.auth.token.email == "mk.rabbani.cse@gmail.com" && request.auth.token.email_verified == true)
+      );
     }
 
     function isEmployee() {
       return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'employee';
     }
 
@@ -156,7 +158,10 @@ service cloud.firestore {
              data.subject is string && data.subject.size() > 0 && data.subject.size() < 200 &&
              data.message is string && data.message.size() > 0 && data.message.size() < 5000 &&
              data.status in ['new', 'read', 'replied'] &&
-             data.createdAt is timestamp;
+             data.createdAt is timestamp &&
+             (!('uid' in data) || data.uid is string || data.uid == null) &&
+             (!('replyContent' in data) || data.replyContent is string) &&
+             (!('repliedAt' in data) || data.repliedAt is timestamp);
     }
 
     // ===============================================================
@@ -189,11 +194,12 @@ service cloud.firestore {
 
     match /messages/{messageId} {
       allow read: if isAuthenticated() && (isOwner(resource.data.senderId) || isOwner(resource.data.receiverId) || isAdmin());
-      allow create: if isAuthenticated() && isOwner(request.resource.data.senderId) && isValidMessage(request.resource.data);
+      allow create: if isAuthenticated() && (isOwner(request.resource.data.senderId) || isAdmin()) && isValidMessage(request.resource.data);
     }
 
     match /contact_messages/{messageId} {
-      allow read, update, delete: if isAdmin();
+      allow read, delete: if isAdmin();
+      allow update: if isAdmin() && isValidContactMessage(request.resource.data);
       allow create: if isValidContactMessage(request.resource.data);
     }
 
