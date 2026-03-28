@@ -78,6 +78,8 @@ export default function Layout({ children }: LayoutProps) {
   const navLinks = [
     { name: 'Home', path: '/', icon: HomeIcon },
     { name: 'Services', path: '/services', icon: Briefcase },
+    { name: 'About Us', path: '/about', icon: UserIcon },
+    { name: 'Contact', path: '/contact', icon: MessageSquare },
   ];
 
   const isDefaultAdmin = user?.email === "mk.rabbani.cse@gmail.com" && user?.emailVerified;
@@ -108,7 +110,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="w-10 h-10 bg-[#1A1A1A] rounded-xl flex items-center justify-center group-hover:rotate-6 transition-transform">
               <span className="text-white font-bold text-xl">S</span>
             </div>
-            <span className="text-xl font-bold tracking-tight">ServiceHub<span className="text-[#F27D26]">.</span></span>
+            <span className="text-xl font-bold tracking-tight">ServicesHub<span className="text-[#F27D26]">.</span></span>
           </Link>
 
           {/* Desktop Nav */}
@@ -244,7 +246,7 @@ export default function Layout({ children }: LayoutProps) {
                 <div className="w-8 h-8 bg-[#1A1A1A] rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-lg">S</span>
                 </div>
-                <span className="text-lg font-bold">ServiceHub<span className="text-[#F27D26]">.</span></span>
+                <span className="text-lg font-bold">ServicesHub<span className="text-[#F27D26]">.</span></span>
               </Link>
               <p className="text-[#4A4A4A] max-w-sm text-sm leading-relaxed">
                 Empowering businesses with premium digital solutions. From MERN stack development to high-end video editing, we deliver excellence.
@@ -253,10 +255,10 @@ export default function Layout({ children }: LayoutProps) {
             <div>
               <h4 className="font-bold text-sm uppercase tracking-wider mb-6">Services</h4>
               <ul className="space-y-4 text-sm text-[#4A4A4A]">
-                <li><Link to="/services?cat=MERN" className="hover:text-[#F27D26] transition-colors">Web Development</Link></li>
-                <li><Link to="/services?cat=WordPress" className="hover:text-[#F27D26] transition-colors">WordPress Sites</Link></li>
-                <li><Link to="/services?cat=Video" className="hover:text-[#F27D26] transition-colors">Video Editing</Link></li>
-                <li><Link to="/services?cat=Marketing" className="hover:text-[#F27D26] transition-colors">Digital Marketing</Link></li>
+                <li><Link to="/services" className="hover:text-[#F27D26] transition-colors">Web Development</Link></li>
+                <li><Link to="/services" className="hover:text-[#F27D26] transition-colors">WordPress Sites</Link></li>
+                <li><Link to="/services" className="hover:text-[#F27D26] transition-colors">Video Editing</Link></li>
+                <li><Link to="/services" className="hover:text-[#F27D26] transition-colors">Digital Marketing</Link></li>
               </ul>
             </div>
             <div>
@@ -270,7 +272,7 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           </div>
           <div className="border-t border-gray-100 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-[#9E9E9E]">
-            <p>© 2026 ServiceHub Pro. All rights reserved.</p>
+            <p>© 2026 ServicesHub Pro. All rights reserved.</p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <a href="#" className="hover:text-[#1A1A1A]">Twitter</a>
               <a href="#" className="hover:text-[#1A1A1A]">LinkedIn</a>

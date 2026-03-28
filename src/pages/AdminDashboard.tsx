@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, Timestamp, where, getDocs, writeBatch } from 'firebase/firestore';
-import { Service, Order, UserProfile } from '../types';
+import { Service, Order, UserProfile, ContactMessage } from '../types';
 import { seedServices } from '../lib/seedData';
 import { 
   Plus, 
@@ -13,6 +13,8 @@ import {
   TrendingUp, 
   CheckCircle2, 
   X, 
+  Mail,
+  MessageSquare,
   Image as ImageIcon,
   LayoutDashboard,
   ShieldCheck,
@@ -33,7 +35,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
 
-type AdminTab = 'overview' | 'services' | 'orders' | 'users' | 'settings';
+type AdminTab = 'overview' | 'services' | 'orders' | 'users' | 'messages' | 'settings';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -41,6 +43,7 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [employees, setEmployees] = useState<UserProfile[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const navigate = useNavigate();
@@ -61,6 +64,9 @@ export default function AdminDashboard() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isClearInventoryModalOpen, setIsClearInventoryModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const [cancellationNote, setCancellationNote] = useState('');
   
   // Settings State
   const [platformSettings, setPlatformSettings] = useState({
@@ -105,11 +111,17 @@ export default function AdminDashboard() {
       setAllUsers(snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile)));
     });
 
+    const qContactMessages = query(collection(db, 'contact_messages'), orderBy('createdAt', 'desc'));
+    const unsubContactMessages = onSnapshot(qContactMessages, (snapshot) => {
+      setContactMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactMessage)));
+    });
+
     return () => {
       unsubServices();
       unsubOrders();
       unsubEmployees();
       unsubAllUsers();
+      unsubContactMessages();
     };
   }, []);
 
@@ -186,13 +198,16 @@ export default function AdminDashboard() {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
+  const updateOrderStatus = async (orderId: string, status: string, note?: string) => {
     setIsProcessing(true);
     try {
-      await updateDoc(doc(db, 'orders', orderId), { 
+      const updateData: any = { 
         status,
         updatedAt: Timestamp.now()
-      });
+      };
+      if (note) updateData.cancellationNote = note;
+      
+      await updateDoc(doc(db, 'orders', orderId), updateData);
       toast.success(`Order status updated to ${status}`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `orders/${orderId}`);
@@ -242,6 +257,33 @@ export default function AdminDashboard() {
       toast.success("Platform configuration saved");
     } catch (error) {
       toast.error("Failed to save settings");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const updateMessageStatus = async (id: string, status: 'read' | 'replied') => {
+    setIsProcessing(true);
+    try {
+      await updateDoc(doc(db, 'contact_messages', id), { status });
+      toast.success(`Message marked as ${status}`);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `contact_messages/${id}`);
+      toast.error("Failed to update message status");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const deleteMessage = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this message?")) return;
+    setIsProcessing(true);
+    try {
+      await deleteDoc(doc(db, 'contact_messages', id));
+      toast.success("Message deleted");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `contact_messages/${id}`);
+      toast.error("Failed to delete message");
     } finally {
       setIsProcessing(false);
     }
@@ -322,6 +364,7 @@ export default function AdminDashboard() {
     { id: 'services', label: 'Services', icon: LayoutDashboard },
     { id: 'orders', label: 'Orders', icon: ShoppingBag },
     { id: 'users', label: 'Users', icon: Users },
+    { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -624,7 +667,14 @@ export default function AdminDashboard() {
                             <td className="p-8">
                               <select 
                                 value={order.status}
-                                onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                                onChange={(e) => {
+                                  if (e.target.value === 'cancelled') {
+                                    setCancellingOrderId(order.id);
+                                    setIsCancelModalOpen(true);
+                                  } else {
+                                    updateOrderStatus(order.id, e.target.value);
+                                  }
+                                }}
                                 className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border-none focus:ring-2 focus:ring-[#F27D26] cursor-pointer ${
                                   order.status === 'completed' ? 'bg-green-100 text-green-600' : 
                                   order.status === 'cancelled' ? 'bg-red-100 text-red-600' : 
@@ -757,6 +807,111 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {activeTab === 'messages' && (
+            <div className="space-y-10">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-4xl font-black tracking-tight mb-2">Contact Messages</h2>
+                  <p className="text-[#4A4A4A] font-medium">Manage inquiries from the contact form.</p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="bg-white px-6 py-3 rounded-2xl border border-gray-100 shadow-sm">
+                    <p className="text-xs font-bold text-[#9E9E9E] uppercase tracking-widest mb-1">New Messages</p>
+                    <p className="text-2xl font-black text-[#F27D26]">{contactMessages.filter(m => m.status === 'new').length}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[48px] border border-gray-100 shadow-2xl shadow-black/5 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-bottom border-gray-100">
+                        <th className="px-10 py-8 text-xs font-black uppercase tracking-widest text-[#9E9E9E]">Sender</th>
+                        <th className="px-10 py-8 text-xs font-black uppercase tracking-widest text-[#9E9E9E]">Subject & Message</th>
+                        <th className="px-10 py-8 text-xs font-black uppercase tracking-widest text-[#9E9E9E]">Date</th>
+                        <th className="px-10 py-8 text-xs font-black uppercase tracking-widest text-[#9E9E9E]">Status</th>
+                        <th className="px-10 py-8 text-xs font-black uppercase tracking-widest text-[#9E9E9E] text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {contactMessages.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-10 py-20 text-center">
+                            <div className="flex flex-col items-center">
+                              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                <MessageSquare size={32} className="text-gray-300" />
+                              </div>
+                              <p className="text-[#9E9E9E] font-bold">No messages found.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        contactMessages.map((msg) => (
+                          <tr key={msg.id} className={`hover:bg-gray-50/50 transition-colors ${msg.status === 'new' ? 'bg-blue-50/30' : ''}`}>
+                            <td className="px-10 py-8">
+                              <p className="font-black text-[#1A1A1A]">{msg.name}</p>
+                              <p className="text-sm text-[#4A4A4A]">{msg.email}</p>
+                            </td>
+                            <td className="px-10 py-8 max-w-md">
+                              <p className="font-bold text-[#1A1A1A] mb-1">{msg.subject}</p>
+                              <p className="text-sm text-[#4A4A4A] line-clamp-2">{msg.message}</p>
+                            </td>
+                            <td className="px-10 py-8">
+                              <p className="text-sm font-bold text-[#1A1A1A]">
+                                {msg.createdAt?.toDate().toLocaleDateString()}
+                              </p>
+                              <p className="text-xs text-[#9E9E9E]">
+                                {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </td>
+                            <td className="px-10 py-8">
+                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                msg.status === 'new' ? 'bg-blue-100 text-blue-600' : 
+                                msg.status === 'replied' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {msg.status}
+                              </span>
+                            </td>
+                            <td className="px-10 py-8 text-right">
+                              <div className="flex justify-end space-x-2">
+                                {msg.status === 'new' && (
+                                  <button 
+                                    onClick={() => updateMessageStatus(msg.id, 'read')}
+                                    className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-100 transition-all"
+                                    title="Mark as Read"
+                                  >
+                                    <CheckCircle2 size={18} />
+                                  </button>
+                                )}
+                                {msg.status !== 'replied' && (
+                                  <button 
+                                    onClick={() => updateMessageStatus(msg.id, 'replied')}
+                                    className="p-3 bg-green-50 text-green-600 rounded-2xl hover:bg-green-100 transition-all"
+                                    title="Mark as Replied"
+                                  >
+                                    <Mail size={18} />
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => deleteMessage(msg.id)}
+                                  className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100 transition-all"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'settings' && (
             <div className="max-w-2xl space-y-8">
               <div className="bg-white p-10 rounded-[40px] border border-gray-100 shadow-sm">
@@ -884,6 +1039,15 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
+                {selectedOrder.status === 'cancelled' && selectedOrder.cancellationNote && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-red-500 mb-1">Cancellation Reason</p>
+                    <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
+                      <p className="text-sm text-red-700 leading-relaxed italic">"{selectedOrder.cancellationNote}"</p>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Assigned Expert</p>
                   <p className="font-bold text-[#1A1A1A]">{selectedOrder.assignedExpertName || 'Not Assigned'}</p>
@@ -906,6 +1070,68 @@ export default function AdminDashboard() {
                     Close
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancel Order Modal */}
+      <AnimatePresence>
+        {isCancelModalOpen && (
+          <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-black">Cancel Order</h2>
+                <button onClick={() => {
+                  setIsCancelModalOpen(false);
+                  setCancellationNote('');
+                }} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <p className="text-sm text-[#4A4A4A] mb-6">Please provide a reason for cancelling this order. This note will be visible to the client.</p>
+              
+              <div className="space-y-4 mb-8">
+                <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Cancellation Note</label>
+                <textarea 
+                  rows={4}
+                  placeholder="e.g., Expert unavailable for the requested timeline..."
+                  className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-red-500 focus:ring-0 transition-all font-medium"
+                  value={cancellationNote}
+                  onChange={(e) => setCancellationNote(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => {
+                    setIsCancelModalOpen(false);
+                    setCancellationNote('');
+                  }}
+                  className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Back
+                </button>
+                <button 
+                  onClick={() => {
+                    if (cancellingOrderId) {
+                      updateOrderStatus(cancellingOrderId, 'cancelled', cancellationNote);
+                      setIsCancelModalOpen(false);
+                      setCancellationNote('');
+                    }
+                  }}
+                  disabled={!cancellationNote.trim()}
+                  className="flex-1 px-8 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
+                >
+                  Confirm Cancel
+                </button>
               </div>
             </motion.div>
           </div>

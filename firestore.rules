@@ -63,6 +63,16 @@ service cloud.firestore {
     //   - orderId: string (optional)
     //   - createdAt: timestamp (required)
     //
+    // Collection: contact_messages
+    // Document ID: messageId
+    // Fields:
+    //   - name: string (required)
+    //   - email: string (required)
+    //   - subject: string (required)
+    //   - message: string (required)
+    //   - status: string (required, 'new', 'read', 'replied')
+    //   - createdAt: timestamp (required)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -110,7 +120,7 @@ service cloud.firestore {
     }
 
     function isValidEmail(email) {
-      return email is string && email.size() >= 3 && email.contains("@");
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
     }
 
     function isValidOrder(data) {
@@ -137,6 +147,16 @@ service cloud.firestore {
       return data.senderId is string && data.senderId.size() > 0 &&
              data.receiverId is string && data.receiverId.size() > 0 &&
              data.text is string && data.text.size() > 0 && data.text.size() < 5000;
+    }
+
+    function isValidContactMessage(data) {
+      return hasRequiredFields(['name', 'email', 'subject', 'message', 'status', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.subject is string && data.subject.size() > 0 && data.subject.size() < 200 &&
+             data.message is string && data.message.size() > 0 && data.message.size() < 5000 &&
+             data.status in ['new', 'read', 'replied'] &&
+             data.createdAt is timestamp;
     }
 
     // ===============================================================
@@ -170,6 +190,11 @@ service cloud.firestore {
     match /messages/{messageId} {
       allow read: if isAuthenticated() && (isOwner(resource.data.senderId) || isOwner(resource.data.receiverId) || isAdmin());
       allow create: if isAuthenticated() && isOwner(request.resource.data.senderId) && isValidMessage(request.resource.data);
+    }
+
+    match /contact_messages/{messageId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isValidContactMessage(request.resource.data);
     }
 
     // Default deny

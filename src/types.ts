@@ -35,6 +35,7 @@ export interface Order {
   serviceTitle: string;
   price: number;
   status: 'pending' | 'paid' | 'in-progress' | 'completed' | 'cancelled';
+  cancellationNote?: string;
   paymentId?: string;
   assignedExpertId?: string; // Employee/Expert UID
   assignedExpertName?: string; // Employee/Expert Name
@@ -59,4 +60,14 @@ export interface Message {
   text: string;
   orderId?: string;
   createdAt: Timestamp;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  createdAt: Timestamp;
+  status: 'new' | 'read' | 'replied';
 }

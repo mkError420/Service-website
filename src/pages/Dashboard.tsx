@@ -519,6 +519,15 @@ export default function Dashboard() {
                         </span>
                       </div>
                     </div>
+                    
+                    {selectedOrder.status === 'cancelled' && selectedOrder.cancellationNote && (
+                      <div className="bg-red-50 p-6 rounded-3xl border border-red-100">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-2">Cancellation Reason</p>
+                        <p className="text-red-700 font-medium italic leading-relaxed">
+                          "{selectedOrder.cancellationNote}"
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-8">
