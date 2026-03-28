@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://ai.studio/apps/3e874e1b-434d-452b-b6a6-d4344c2ec342
+View our app in website: https://services-hub-pro.netlify.app/
 
 ## Run Locally
 
@@ -15,6 +15,6 @@ View your app in AI Studio: https://ai.studio/apps/3e874e1b-434d-452b-b6a6-d4344
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Set the `API_KEY` in [.env.local](.env.local) to your API key
 3. Run the app:
    `npm run dev`
