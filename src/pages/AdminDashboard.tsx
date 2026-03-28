@@ -80,6 +80,7 @@ export default function AdminDashboard() {
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [isSeeding, setIsSeeding] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isClearInventoryModalOpen, setIsClearInventoryModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
@@ -336,11 +337,11 @@ export default function AdminDashboard() {
   };
 
   const deleteMessage = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this message?")) return;
     setIsProcessing(true);
     try {
       await deleteDoc(doc(db, 'contact_messages', id));
       toast.success("Message deleted");
+      setConfirmDeleteId(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `contact_messages/${id}`);
       toast.error("Failed to delete message");
@@ -432,7 +433,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex">
       {/* Sidebar */}
-      <aside className={`bg-[#1A1A1A] text-white transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-72' : 'w-20'}`}>
+      <aside className={`bg-[#1A1A1A] text-white transition-all duration-300 hidden md:flex flex-col ${isSidebarOpen ? 'w-72' : 'w-20'}`}>
         <div className="p-8 flex items-center space-x-4">
           <div className="w-10 h-10 bg-[#F27D26] rounded-xl flex items-center justify-center flex-shrink-0">
             <ShieldCheck size={24} className="text-white" />
@@ -470,9 +471,9 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-grow overflow-y-auto max-h-screen p-8 md:p-12">
+      <main className="flex-grow overflow-y-auto max-h-screen p-4 md:p-12 pb-24 md:pb-12">
         {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-12 gap-6">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-[#1A1A1A] capitalize">
               {activeTab} <span className="text-[#F27D26]">Management</span>
@@ -1120,7 +1121,7 @@ export default function AdminDashboard() {
                                   </button>
                                 )}
                                 <button 
-                                  onClick={() => deleteMessage(msg.id)}
+                                  onClick={() => setConfirmDeleteId(msg.id)}
                                   className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100 transition-all"
                                   title="Delete"
                                 >
@@ -1622,6 +1623,58 @@ export default function AdminDashboard() {
                   ) : (editingService ? 'Update Service' : 'Create Service')}
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Mobile Bottom Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-2 flex justify-between items-center z-50">
+        {sidebarItems.filter(item => ['overview', 'orders', 'messages', 'mail'].includes(item.id)).map((item) => (
+          <button
+            key={item.id}
+            onClick={() => handleTabChange(item.id as AdminTab)}
+            className={`flex flex-col items-center p-2 transition-all ${
+              activeTab === item.id ? 'text-[#F27D26]' : 'text-gray-400'
+            }`}
+          >
+            <item.icon size={20} />
+            <span className="text-[10px] font-bold mt-1">{item.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {confirmDeleteId && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-[32px] p-8 max-w-sm w-full shadow-2xl"
+            >
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={32} className="text-red-500" />
+              </div>
+              <h3 className="text-2xl font-black text-center mb-2">Delete Message?</h3>
+              <p className="text-[#4A4A4A] text-center font-medium mb-8">
+                This action cannot be undone. Are you sure you want to delete this inquiry?
+              </p>
+              <div className="flex flex-col space-y-3">
+                <button 
+                  onClick={() => deleteMessage(confirmDeleteId)}
+                  disabled={isProcessing}
+                  className="w-full bg-red-500 text-white py-4 rounded-2xl font-bold hover:bg-red-600 transition-all disabled:opacity-50"
+                >
+                  {isProcessing ? 'Deleting...' : 'Yes, Delete Message'}
+                </button>
+                <button 
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="w-full bg-gray-50 text-[#1A1A1A] py-4 rounded-2xl font-bold hover:bg-gray-100 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

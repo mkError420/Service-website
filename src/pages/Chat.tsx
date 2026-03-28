@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { db, auth } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy, addDoc, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { Message, UserProfile } from '../types';
 import { Send, User as UserIcon, ShieldCheck, MessageSquare, ArrowLeft, MoreVertical, Paperclip } from 'lucide-react';
@@ -20,9 +20,13 @@ export default function Chat() {
 
     // Fetch current user profile
     const fetchProfile = async () => {
-      const userDoc = await getDoc(doc(db, 'users', auth.currentUser!.uid));
-      if (userDoc.exists()) {
-        setProfile(userDoc.data() as UserProfile);
+      try {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser!.uid));
+        if (userDoc.exists()) {
+          setProfile(userDoc.data() as UserProfile);
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
       }
     };
     fetchProfile();
@@ -36,18 +40,25 @@ export default function Chat() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
-      // Filter for current user's conversation
-      const filtered = msgs.filter(m => 
-        m.senderId === auth.currentUser?.uid || 
-        m.receiverId === auth.currentUser?.uid ||
-        (profile?.role === 'admin' && (m.senderId === auth.currentUser?.uid || m.receiverId === auth.currentUser?.uid || m.receiverId === 'admin'))
-      );
-      
-      setMessages(filtered);
+      setMessages(msgs);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'messages');
     });
 
     return () => unsubscribe();
   }, [orderId]);
+
+  const filteredMessages = messages.filter(m => {
+    if (!auth.currentUser) return false;
+    // User is involved if they are sender or receiver
+    const isUserInvolved = m.senderId === auth.currentUser.uid || m.receiverId === auth.currentUser.uid;
+    // Or if they are admin (admins can see all messages in their view)
+    const isAdminInvolved = profile?.role === 'admin';
+    // Or if the message is sent to 'admin' and the current user is an admin
+    const isSentToAdmin = m.receiverId === 'admin' && profile?.role === 'admin';
+    
+    return isUserInvolved || isAdminInvolved || isSentToAdmin;
+  });
 
   useEffect(() => {
     if (!auth.currentUser || !messages.length || !profile) return;
@@ -92,7 +103,7 @@ export default function Chat() {
       await addDoc(collection(db, 'messages'), msgData);
       setNewMessage('');
     } catch (error) {
-      console.error("Error sending message", error);
+      handleFirestoreError(error, OperationType.WRITE, 'messages');
     }
   };
 
@@ -153,7 +164,7 @@ export default function Chat() {
 
           {/* Messages Area */}
           <div className="flex-grow overflow-y-auto p-8 space-y-8 bg-[#FDFCFB]">
-            {messages.map((msg, i) => {
+            {filteredMessages.map((msg, i) => {
               const isMe = msg.senderId === auth.currentUser?.uid;
               return (
                 <motion.div 
