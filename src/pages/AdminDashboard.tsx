@@ -35,7 +35,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
 
-type AdminTab = 'overview' | 'services' | 'orders' | 'users' | 'messages' | 'settings';
+type AdminTab = 'overview' | 'services' | 'orders' | 'users' | 'messages' | 'mail' | 'settings';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -365,6 +365,7 @@ export default function AdminDashboard() {
     { id: 'orders', label: 'Orders', icon: ShoppingBag },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
+    { id: 'mail', label: 'Mail', icon: Mail },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -421,6 +422,8 @@ export default function AdminDashboard() {
               {activeTab === 'services' && 'Manage your service catalog and expert assignments.'}
               {activeTab === 'orders' && 'Track and fulfill client requests across the pipeline.'}
               {activeTab === 'users' && 'Manage user roles and platform permissions.'}
+              {activeTab === 'messages' && 'Live chat and communication with clients.'}
+              {activeTab === 'mail' && 'Manage inquiries from the contact form.'}
               {activeTab === 'settings' && 'Configure platform defaults and system settings.'}
             </p>
           </div>
@@ -808,6 +811,82 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === 'messages' && (
+            <div className="space-y-10">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-4xl font-black tracking-tight mb-2">Live Messages</h2>
+                  <p className="text-[#4A4A4A] font-medium">Real-time chat with clients and experts.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 h-[600px]">
+                {/* Chat List */}
+                <div className="bg-white rounded-[40px] border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+                  <div className="p-6 border-b border-gray-50 bg-gray-50/50">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-[#9E9E9E]">Active Conversations</h3>
+                  </div>
+                  <div className="flex-grow overflow-y-auto p-4 space-y-2">
+                    {orders.filter(o => o.status !== 'cancelled').map(order => (
+                      <button 
+                        key={order.id}
+                        className="w-full p-4 rounded-2xl hover:bg-gray-50 transition-all text-left border border-transparent hover:border-gray-100 group"
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="font-black text-sm text-[#1A1A1A]">#{order.id.slice(0, 8)}</p>
+                          <span className="text-[10px] font-bold text-[#9E9E9E]">12:45 PM</span>
+                        </div>
+                        <p className="text-xs font-bold text-[#F27D26] mb-1">{order.serviceTitle}</p>
+                        <p className="text-xs text-[#4A4A4A] line-clamp-1 group-hover:text-[#1A1A1A] transition-colors">
+                          {order.clientId === 'guest' ? order.guestName : 'Client ID: ' + order.clientId.slice(0, 8)}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Chat Window */}
+                <div className="lg:col-span-2 bg-white rounded-[40px] border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+                  <div className="p-8 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 rounded-2xl bg-[#F27D26]/10 flex items-center justify-center">
+                        <User size={24} className="text-[#F27D26]" />
+                      </div>
+                      <div>
+                        <p className="font-black text-[#1A1A1A]">Select a conversation</p>
+                        <p className="text-xs font-bold text-green-500 uppercase tracking-widest">Online</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-grow p-8 overflow-y-auto bg-gray-50/30 flex flex-col items-center justify-center text-center">
+                    <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                      <MessageSquare size={32} className="text-gray-200" />
+                    </div>
+                    <p className="text-[#9E9E9E] font-bold max-w-xs">Select an order from the list to start chatting with the client.</p>
+                  </div>
+
+                  <div className="p-6 border-t border-gray-100 bg-white">
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        placeholder="Type your message..."
+                        disabled
+                        className="w-full pl-6 pr-20 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#F27D26] transition-all font-medium disabled:opacity-50"
+                      />
+                      <button 
+                        disabled
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#1A1A1A] text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-[#F27D26] transition-all disabled:opacity-50"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'mail' && (
             <div className="space-y-10">
               <div className="flex justify-between items-center">
                 <div>
