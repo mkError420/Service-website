@@ -1,19 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, where, onSnapshot, orderBy, addDoc, Timestamp, doc, getDoc } from 'firebase/firestore';
-import { Message, UserProfile } from '../types';
-import { Send, User as UserIcon, ShieldCheck, MessageSquare, ArrowLeft, MoreVertical, Paperclip } from 'lucide-react';
+import { collection, query, where, onSnapshot, orderBy, addDoc, Timestamp, doc, getDoc, getDocs } from 'firebase/firestore';
+import { Message, UserProfile, Order } from '../types';
+import { Send, User as UserIcon, ShieldCheck, MessageSquare, ArrowLeft, MoreVertical, Paperclip, Package, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Chat() {
-  const [searchParams] = useSearchParams();
-  const orderId = searchParams.get('orderId');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialOrderId = searchParams.get('orderId');
+  
   const [messages, setMessages] = useState<Message[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedChatId, setSelectedChatId] = useState<string>(initialOrderId || 'general');
   const [newMessage, setNewMessage] = useState('');
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [chatPartner, setChatPartner] = useState<UserProfile | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [showSidebar, setShowSidebar] = useState(true);
+
+  useEffect(() => {
+    if (initialOrderId) {
+      setShowSidebar(false);
+    }
+  }, [initialOrderId]);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -31,72 +41,74 @@ export default function Chat() {
     };
     fetchProfile();
 
-    // Fetch messages
-    const q = query(
-      collection(db, 'messages'),
-      where('orderId', '==', orderId || ''),
-      orderBy('createdAt', 'asc')
+    // Fetch user's orders
+    const ordersQuery = query(
+      collection(db, 'orders'),
+      where('clientId', '==', auth.currentUser.uid)
     );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
-      setMessages(msgs);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'messages');
+    const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
+      const o = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      setOrders(o);
     });
 
-    return () => unsubscribe();
-  }, [orderId]);
+    // Fetch all messages involving the user
+    // We use two listeners because Firestore doesn't support OR queries across different fields easily without complex setup
+    let sentMsgs: Message[] = [];
+    let receivedMsgs: Message[] = [];
 
-  const filteredMessages = messages.filter(m => {
-    if (!auth.currentUser) return false;
-    // User is involved if they are sender or receiver
-    const isUserInvolved = m.senderId === auth.currentUser.uid || m.receiverId === auth.currentUser.uid;
-    // Or if they are admin (admins can see all messages in their view)
-    const isAdminInvolved = profile?.role === 'admin';
-    // Or if the message is sent to 'admin' and the current user is an admin
-    const isSentToAdmin = m.receiverId === 'admin' && profile?.role === 'admin';
-    
-    return isUserInvolved || isAdminInvolved || isSentToAdmin;
-  });
+    const updateMessages = () => {
+      const all = [...sentMsgs, ...receivedMsgs];
+      // Remove duplicates and sort
+      const unique = Array.from(new Map(all.map(m => [m.id, m])).values());
+      unique.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+      setMessages(unique);
+    };
 
-  useEffect(() => {
-    if (!auth.currentUser || !messages.length || !profile) return;
-    
-    if (profile.role === 'admin') {
-      const otherPartyId = messages.find(m => m.senderId !== auth.currentUser?.uid)?.senderId;
-      if (otherPartyId && otherPartyId !== 'admin') {
-        getDoc(doc(db, 'users', otherPartyId)).then(docSnap => {
-          if (docSnap.exists()) {
-            setChatPartner(docSnap.data() as UserProfile);
-          }
-        });
-      }
-    }
-  }, [messages, profile]);
+    const qSender = query(
+      collection(db, 'messages'),
+      where('senderId', '==', auth.currentUser.uid),
+      orderBy('createdAt', 'asc')
+    );
+    const unsubscribeSender = onSnapshot(qSender, (snapshot) => {
+      sentMsgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
+      updateMessages();
+    }, (error) => {
+      console.error("Error fetching sent messages:", error);
+    });
+
+    const qReceiver = query(
+      collection(db, 'messages'),
+      where('receiverId', '==', auth.currentUser.uid),
+      orderBy('createdAt', 'asc')
+    );
+    const unsubscribeReceiver = onSnapshot(qReceiver, (snapshot) => {
+      receivedMsgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
+      updateMessages();
+    }, (error) => {
+      console.error("Error fetching received messages:", error);
+    });
+
+    return () => {
+      unsubscribeOrders();
+      unsubscribeSender();
+      unsubscribeReceiver();
+    };
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, selectedChatId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !auth.currentUser) return;
 
     try {
-      let receiverId = 'admin';
-      
-      if (profile?.role === 'admin') {
-        // If admin is in this view, try to find the client
-        const otherParty = messages.find(m => m.senderId !== auth.currentUser?.uid);
-        receiverId = otherParty?.senderId || 'client';
-      }
-
       const msgData = {
         senderId: auth.currentUser.uid,
-        receiverId: receiverId,
+        receiverId: 'admin',
         text: newMessage,
-        orderId: orderId || '',
+        orderId: selectedChatId === 'general' ? '' : selectedChatId,
         createdAt: Timestamp.now()
       };
 
@@ -107,93 +119,192 @@ export default function Chat() {
     }
   };
 
+  const activeMessages = messages.filter(m => {
+    if (selectedChatId === 'general') {
+      return !m.orderId;
+    }
+    return m.orderId === selectedChatId;
+  });
+
+  const activeOrder = orders.find(o => o.id === selectedChatId);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 h-[calc(100vh-160px)]">
-      <div className="bg-white rounded-[40px] border border-gray-100 shadow-2xl shadow-black/5 h-full flex overflow-hidden">
+      <div className="bg-white rounded-[40px] border border-gray-100 shadow-2xl shadow-black/5 h-full flex overflow-hidden relative">
         
-        {/* Sidebar: Chats List (Simplified) */}
-        <div className="hidden md:flex flex-col w-80 border-r border-gray-50 bg-gray-50/30">
-          <div className="p-8 border-b border-gray-50">
+        {/* Sidebar: Chats List */}
+        <div className={`${showSidebar ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-80 border-r border-gray-50 bg-gray-50/30 absolute md:relative inset-0 z-20 md:z-0`}>
+          <div className="p-8 border-b border-gray-50 flex justify-between items-center">
             <h2 className="text-2xl font-black tracking-tight flex items-center">
               <MessageSquare size={24} className="text-[#F27D26] mr-3" />
               Messages
             </h2>
           </div>
-          <div className="flex-grow overflow-y-auto p-4 space-y-4">
-            <div className="bg-white p-6 rounded-3xl border border-[#F27D26]/20 shadow-lg shadow-[#F27D26]/5 cursor-pointer">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-[#1A1A1A] rounded-2xl flex items-center justify-center text-white font-bold">
-                  {profile?.role === 'admin' ? 'C' : 'A'}
-                </div>
-                <div>
-                  <p className="font-bold text-sm">{profile?.role === 'admin' ? 'Client Support' : 'Project Manager'}</p>
-                  <p className="text-xs text-[#9E9E9E] font-medium">Active now</p>
-                </div>
+          <div className="flex-grow overflow-y-auto p-4 space-y-2">
+            {/* General Support Chat */}
+            {(() => {
+              const lastMsg = messages.filter(m => !m.orderId).pop();
+              return (
+                <button 
+                  onClick={() => {
+                    setSelectedChatId('general');
+                    setShowSidebar(false);
+                  }}
+                  className={`w-full p-4 rounded-3xl transition-all text-left border ${
+                    selectedChatId === 'general' 
+                      ? 'bg-white border-[#F27D26]/20 shadow-lg shadow-[#F27D26]/5' 
+                      : 'border-transparent hover:bg-white/50'
+                  }`}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-[#1A1A1A] rounded-2xl flex items-center justify-center text-white">
+                      <ShieldCheck size={24} />
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <div className="flex justify-between items-start">
+                        <p className="font-black text-sm truncate">General Support</p>
+                        {lastMsg && (
+                          <span className="text-[10px] font-bold text-[#9E9E9E]">
+                            {lastMsg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-[#9E9E9E] font-bold uppercase tracking-widest mb-1">Admin Team</p>
+                      {lastMsg && (
+                        <p className="text-xs text-[#4A4A4A] truncate font-medium">{lastMsg.text}</p>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })()}
+
+            {/* Order Chats */}
+            {orders.length > 0 && (
+              <div className="pt-4 pb-2 px-4">
+                <p className="text-[10px] font-black text-[#9E9E9E] uppercase tracking-widest">Your Orders</p>
               </div>
-            </div>
+            )}
+            {orders.map(order => {
+              const lastMsg = messages.filter(m => m.orderId === order.id).pop();
+              return (
+                <button 
+                  key={order.id}
+                  onClick={() => {
+                    setSelectedChatId(order.id);
+                    setShowSidebar(false);
+                  }}
+                  className={`w-full p-4 rounded-3xl transition-all text-left border ${
+                    selectedChatId === order.id 
+                      ? 'bg-white border-[#F27D26]/20 shadow-lg shadow-[#F27D26]/5' 
+                      : 'border-transparent hover:bg-white/50'
+                  }`}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-[#F27D26]/10 rounded-2xl flex items-center justify-center text-[#F27D26]">
+                      <Package size={24} />
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <div className="flex justify-between items-start">
+                        <p className="font-black text-sm truncate">{order.serviceTitle}</p>
+                        {lastMsg && (
+                          <span className="text-[10px] font-bold text-[#9E9E9E]">
+                            {lastMsg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-[#9E9E9E] font-bold uppercase tracking-widest mb-1">Order #{order.id.slice(0, 8)}</p>
+                      {lastMsg && (
+                        <p className="text-xs text-[#4A4A4A] truncate font-medium">{lastMsg.text}</p>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Main Chat Area */}
-        <div className="flex-grow flex flex-col bg-white">
+        <div className={`flex-grow flex flex-col bg-white ${showSidebar ? 'hidden md:flex' : 'flex'}`}>
           {/* Chat Header */}
-          <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+          <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10">
             <div className="flex items-center space-x-4">
-              <button className="md:hidden p-2 bg-gray-50 rounded-xl mr-2">
+              <button 
+                onClick={() => setShowSidebar(true)}
+                className="md:hidden p-3 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-all text-gray-400"
+              >
                 <ArrowLeft size={20} />
               </button>
               <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center relative">
-                {profile?.role === 'admin' ? <UserIcon size={24} className="text-[#1A1A1A]" /> : <ShieldCheck size={24} className="text-[#F27D26]" />}
+                {selectedChatId === 'general' ? <ShieldCheck size={24} className="text-[#F27D26]" /> : <Package size={24} className="text-[#1A1A1A]" />}
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
               </div>
               <div>
-                <h3 className="font-bold text-lg">
-                  {profile?.role === 'admin' 
-                    ? (chatPartner?.displayName || chatPartner?.email || 'Client') 
-                    : 'Admin Support'}
+                <h3 className="font-black text-xl tracking-tight">
+                  {selectedChatId === 'general' ? 'General Support' : (activeOrder?.serviceTitle || 'Order Chat')}
                 </h3>
-                <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">
-                  {orderId ? `Order #${orderId.slice(0, 8)}` : 'General Inquiry'}
-                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-[10px] text-[#9E9E9E] font-black uppercase tracking-widest">
+                    {selectedChatId === 'general' ? 'Admin Team' : `Order #${selectedChatId.slice(0, 8)}`}
+                  </p>
+                  <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                  <p className="text-[10px] text-green-500 font-black uppercase tracking-widest">Online</p>
+                </div>
               </div>
             </div>
-            <button className="p-3 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-all">
-              <MoreVertical size={20} />
-            </button>
+            <div className="flex items-center space-x-2">
+              <button className="p-3 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-all text-gray-400 hover:text-[#1A1A1A]">
+                <Clock size={20} />
+              </button>
+              <button className="p-3 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-all text-gray-400 hover:text-[#1A1A1A]">
+                <MoreVertical size={20} />
+              </button>
+            </div>
           </div>
 
           {/* Messages Area */}
           <div className="flex-grow overflow-y-auto p-8 space-y-8 bg-[#FDFCFB]">
-            {filteredMessages.map((msg, i) => {
-              const isMe = msg.senderId === auth.currentUser?.uid;
-              return (
-                <motion.div 
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`max-w-[70%] ${isMe ? 'order-2' : 'order-1'}`}>
-                    <div className={`p-6 rounded-[32px] text-sm font-medium leading-relaxed shadow-sm ${
-                      isMe 
-                        ? 'bg-[#1A1A1A] text-white rounded-tr-none' 
-                        : 'bg-white border border-gray-100 text-[#1A1A1A] rounded-tl-none'
-                    }`}>
-                      {msg.text}
+            {activeMessages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                  <MessageSquare size={32} className="text-gray-200" />
+                </div>
+                <h4 className="font-black text-lg mb-2">No messages yet</h4>
+                <p className="text-[#9E9E9E] font-bold max-w-xs text-sm">Start the conversation by sending a message below. Our team is ready to help!</p>
+              </div>
+            ) : (
+              activeMessages.map((msg, i) => {
+                const isMe = msg.senderId === auth.currentUser?.uid;
+                return (
+                  <motion.div 
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-[70%] ${isMe ? 'order-2' : 'order-1'}`}>
+                      <div className={`p-6 rounded-[32px] text-sm font-medium leading-relaxed shadow-sm ${
+                        isMe 
+                          ? 'bg-[#1A1A1A] text-white rounded-tr-none' 
+                          : 'bg-white border border-gray-100 text-[#1A1A1A] rounded-tl-none'
+                      }`}>
+                        {msg.text}
+                      </div>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mt-2 text-[#9E9E9E] ${isMe ? 'text-right' : 'text-left'}`}>
+                        {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest mt-2 text-[#9E9E9E] ${isMe ? 'text-right' : 'text-left'}`}>
-                      {msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </motion.div>
-              );
-            })}
+                  </motion.div>
+                );
+              })
+            )}
             <div ref={scrollRef} />
           </div>
 
           {/* Input Area */}
-          <div className="p-8 border-t border-gray-50">
-            <form onSubmit={handleSendMessage} className="flex items-center space-x-4 bg-gray-50 p-2 rounded-[32px] border border-transparent focus-within:border-[#F27D26] focus-within:bg-white transition-all">
+          <div className="p-8 border-t border-gray-50 bg-white">
+            <form onSubmit={handleSendMessage} className="flex items-center space-x-4 bg-gray-50 p-2 rounded-[32px] border border-transparent focus-within:border-[#F27D26] focus-within:bg-white transition-all shadow-sm">
               <button type="button" className="p-4 text-gray-400 hover:text-[#F27D26] transition-all">
                 <Paperclip size={24} />
               </button>
