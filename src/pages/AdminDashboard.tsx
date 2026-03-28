@@ -874,8 +874,8 @@ export default function AdminDashboard() {
             <div className="space-y-10">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-4xl font-black tracking-tight mb-2">Live Messages</h2>
-                  <p className="text-[#4A4A4A] font-medium">Real-time chat with clients and experts.</p>
+                  <h2 className="text-4xl font-black tracking-tight mb-2">Live Chat</h2>
+                  <p className="text-[#4A4A4A] font-medium">Real-time communication with clients and users.</p>
                 </div>
               </div>
 
@@ -887,11 +887,15 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex-grow overflow-y-auto p-4 space-y-2">
                     {/* General Inquiries */}
-                    {Array.from(new Set(allMessages.filter(m => !m.orderId).map(m => m.senderId)))
-                      .filter(uid => uid !== auth.currentUser?.uid)
+                    {Array.from(new Set([
+                      ...allMessages.filter(m => !m.orderId).map(m => m.senderId),
+                      ...allMessages.filter(m => !m.orderId).map(m => m.receiverId)
+                    ]))
+                      .filter(uid => uid !== auth.currentUser?.uid && uid !== 'admin' && uid !== '')
                       .map(uid => {
                         const chatId = `user_${uid}`;
-                        const userMsgs = allMessages.filter(m => !m.orderId && (m.senderId === uid || m.receiverId === uid));
+                        const userProfile = allUsers.find(u => u.uid === uid);
+                        const userMsgs = allMessages.filter(m => !m.orderId && (m.senderId === uid || m.receiverId === uid || (m.receiverId === 'admin' && m.senderId === uid)));
                         const lastMsg = userMsgs.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())[0];
                         
                         return (
@@ -912,7 +916,9 @@ export default function AdminDashboard() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs font-bold text-[#F27D26] mb-1">User: {uid.slice(0, 8)}</p>
+                            <p className="text-xs font-bold text-[#F27D26] mb-1">
+                              {userProfile?.displayName || userProfile?.email || `User: ${uid.slice(0, 8)}`}
+                            </p>
                             <p className="text-xs text-[#4A4A4A] line-clamp-1 group-hover:text-[#1A1A1A] transition-colors">
                               {lastMsg?.text || 'No messages yet'}
                             </p>
@@ -962,7 +968,9 @@ export default function AdminDashboard() {
                           </div>
                           <div>
                             <p className="font-black text-[#1A1A1A]">
-                              {orders.find(o => o.id === selectedChatId)?.serviceTitle || 'Order Chat'}
+                              {selectedChatId.startsWith('user_') 
+                                ? (allUsers.find(u => u.uid === selectedChatId.replace('user_', ''))?.displayName || 'General Inquiry')
+                                : (orders.find(o => o.id === selectedChatId)?.serviceTitle || 'Order Chat')}
                             </p>
                             <p className="text-xs font-bold text-green-500 uppercase tracking-widest">Active Session</p>
                           </div>
@@ -974,7 +982,7 @@ export default function AdminDashboard() {
                           .filter(m => {
                             if (selectedChatId.startsWith('user_')) {
                               const uid = selectedChatId.replace('user_', '');
-                              return !m.orderId && (m.senderId === uid || m.receiverId === uid);
+                              return !m.orderId && (m.senderId === uid || m.receiverId === uid || (m.receiverId === 'admin' && m.senderId === uid));
                             }
                             return m.orderId === selectedChatId;
                           })

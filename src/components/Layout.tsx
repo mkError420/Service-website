@@ -89,13 +89,13 @@ export default function Layout({ children }: LayoutProps) {
   const authLinks = isAdmin 
     ? [
         { name: 'Admin Panel', path: '/admin', icon: ShieldCheck },
-        { name: 'Messages', path: '/admin?tab=messages', icon: MessageSquare },
+        { name: 'Chat', path: '/admin?tab=messages', icon: MessageSquare },
         { name: 'Mail', path: '/admin?tab=mail', icon: Mail },
       ]
-    : profile?.role === 'client'
+    : user 
     ? [
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'Messages', path: '/chat', icon: MessageSquare },
+        { name: 'Chat', path: '/chat', icon: MessageSquare },
       ]
     : [];
 

@@ -30,22 +30,39 @@ export default function Chat() {
     // Fetch messages
     const q = query(
       collection(db, 'messages'),
+      where('orderId', '==', orderId || ''),
       orderBy('createdAt', 'asc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
-      // In a real app, we'd filter by sender/receiver or orderId
-      // For demo, we'll filter by orderId if present, or just show all for the current user
-      const filtered = orderId 
-        ? msgs.filter(m => m.orderId === orderId)
-        : msgs.filter(m => m.senderId === auth.currentUser!.uid || m.receiverId === auth.currentUser!.uid);
+      // Filter for current user's conversation
+      const filtered = msgs.filter(m => 
+        m.senderId === auth.currentUser?.uid || 
+        m.receiverId === auth.currentUser?.uid ||
+        (profile?.role === 'admin' && (m.senderId === auth.currentUser?.uid || m.receiverId === auth.currentUser?.uid || m.receiverId === 'admin'))
+      );
       
       setMessages(filtered);
     });
 
     return () => unsubscribe();
   }, [orderId]);
+
+  useEffect(() => {
+    if (!auth.currentUser || !messages.length || !profile) return;
+    
+    if (profile.role === 'admin') {
+      const otherPartyId = messages.find(m => m.senderId !== auth.currentUser?.uid)?.senderId;
+      if (otherPartyId && otherPartyId !== 'admin') {
+        getDoc(doc(db, 'users', otherPartyId)).then(docSnap => {
+          if (docSnap.exists()) {
+            setChatPartner(docSnap.data() as UserProfile);
+          }
+        });
+      }
+    }
+  }, [messages, profile]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -119,7 +136,11 @@ export default function Chat() {
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
               </div>
               <div>
-                <h3 className="font-bold text-lg">{profile?.role === 'admin' ? 'Client Support' : 'Project Manager'}</h3>
+                <h3 className="font-bold text-lg">
+                  {profile?.role === 'admin' 
+                    ? (chatPartner?.displayName || chatPartner?.email || 'Client') 
+                    : 'Admin Support'}
+                </h3>
                 <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">
                   {orderId ? `Order #${orderId.slice(0, 8)}` : 'General Inquiry'}
                 </p>
