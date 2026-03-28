@@ -56,9 +56,17 @@ export default function Chat() {
     if (!newMessage.trim() || !auth.currentUser) return;
 
     try {
+      let receiverId = 'admin';
+      
+      if (profile?.role === 'admin') {
+        // If admin is in this view, try to find the client
+        const otherParty = messages.find(m => m.senderId !== auth.currentUser?.uid);
+        receiverId = otherParty?.senderId || 'client';
+      }
+
       const msgData = {
         senderId: auth.currentUser.uid,
-        receiverId: profile?.role === 'admin' ? 'client_uid' : 'admin_uid', // Simplified for demo
+        receiverId: receiverId,
         text: newMessage,
         orderId: orderId || '',
         createdAt: Timestamp.now()

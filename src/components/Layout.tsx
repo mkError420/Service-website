@@ -15,7 +15,8 @@ import {
   Settings,
   ShieldCheck,
   Home as HomeIcon,
-  Search
+  Search,
+  Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster } from 'sonner';
@@ -88,7 +89,8 @@ export default function Layout({ children }: LayoutProps) {
   const authLinks = isAdmin 
     ? [
         { name: 'Admin Panel', path: '/admin', icon: ShieldCheck },
-        { name: 'Messages', path: '/chat', icon: MessageSquare },
+        { name: 'Messages', path: '/admin?tab=messages', icon: MessageSquare },
+        { name: 'Mail', path: '/admin?tab=mail', icon: Mail },
       ]
     : profile?.role === 'client'
     ? [
