@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { collection, query, where, limit, onSnapshot } from 'firebase/firestore';
 import { Service } from '../types';
 import ServiceCard from '../components/ServiceCard';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowRight, 
   CheckCircle2, 
@@ -15,11 +15,18 @@ import {
   Star,
   Users,
   ShieldCheck,
-  Zap
+  Zap,
+  ChevronDown,
+  Mail,
+  Play,
+  Layers,
+  Rocket,
+  Search
 } from 'lucide-react';
 
 export default function Home() {
   const [featuredServices, setFeaturedServices] = useState<Service[]>([]);
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'services'), where('active', '==', true), limit(3));
@@ -37,8 +44,28 @@ export default function Home() {
     { name: 'Digital Marketing', icon: TrendingUp, count: '45+ Services', color: '#1A1A1A' },
   ];
 
+  const processSteps = [
+    { title: 'Discovery', desc: 'We dive deep into your brand, goals, and target audience to build a solid foundation.', icon: Search },
+    { title: 'Strategy', desc: 'Our experts craft a tailored roadmap designed for maximum impact and scalability.', icon: Layers },
+    { title: 'Execution', desc: 'Precision-engineered development and creative work brought to life by our specialists.', icon: Code },
+    { title: 'Launch', desc: 'Final optimization and deployment, followed by dedicated post-launch support.', icon: Rocket },
+  ];
+
+  const testimonials = [
+    { name: 'Sarah Johnson', role: 'CEO, TechFlow', text: 'ServiceHub Pro transformed our digital presence. Their attention to detail and technical expertise is unmatched.', avatar: 'https://i.pravatar.cc/150?u=sarah' },
+    { name: 'Michael Chen', role: 'Founder, CreativePulse', text: 'The video editing team is incredible. They captured our brand voice perfectly and delivered ahead of schedule.', avatar: 'https://i.pravatar.cc/150?u=michael' },
+    { name: 'Emma Davis', role: 'Marketing Director, GlobalScale', text: 'Our conversion rates tripled after we switched to their MERN stack solutions. Truly a game-changer.', avatar: 'https://i.pravatar.cc/150?u=emma' },
+  ];
+
+  const faqs = [
+    { q: 'How long does a typical project take?', a: 'Project timelines vary based on complexity. A standard WordPress site might take 2 weeks, while a complex MERN application can take 8-12 weeks. We provide detailed timelines during discovery.' },
+    { q: 'Do you offer post-launch support?', a: 'Yes, we offer various maintenance and support packages to ensure your digital assets continue to perform at their best long after launch.' },
+    { q: 'Can I request custom features?', a: 'Absolutely. We specialize in custom solutions tailored to your specific business needs. No project is too complex for our team.' },
+    { q: 'What is your pricing structure?', a: 'We offer both fixed-price packages for standard services and custom quotes for complex projects. All pricing is transparent with no hidden fees.' },
+  ];
+
   return (
-    <div className="space-y-32">
+    <div className="space-y-32 pb-20">
       {/* Hero Section */}
       <section className="relative pt-20 pb-32 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -128,6 +155,16 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Client Logos */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
+        <p className="text-center text-[#9E9E9E] font-bold uppercase tracking-widest text-xs mb-12">Trusted by Industry Leaders</p>
+        <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
+          {['Google', 'Microsoft', 'Amazon', 'Meta', 'Netflix', 'Apple'].map(brand => (
+            <span key={brand} className="text-3xl font-black tracking-tighter text-[#1A1A1A]">{brand}</span>
+          ))}
+        </div>
+      </section>
+
       {/* Categories Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-20">
@@ -187,6 +224,32 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Our Process */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-20">
+          <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight">How We Work<span className="text-[#F27D26]">.</span></h2>
+          <p className="text-[#4A4A4A] max-w-2xl mx-auto">
+            A streamlined, transparent process designed to take your project from concept to reality with zero friction.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+          {processSteps.map((step, i) => (
+            <div key={i} className="relative">
+              {i < processSteps.length - 1 && (
+                <div className="hidden md:block absolute top-12 left-full w-full h-[2px] bg-gray-100 -z-10" />
+              )}
+              <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-xl shadow-black/5 relative z-10">
+                <div className="w-12 h-12 bg-[#1A1A1A] text-white rounded-2xl flex items-center justify-center font-black mb-6">
+                  0{i + 1}
+                </div>
+                <h4 className="text-xl font-bold mb-4">{step.title}</h4>
+                <p className="text-[#9E9E9E] text-sm leading-relaxed">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Why Us Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-32 items-center">
@@ -233,6 +296,101 @@ export default function Home() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="bg-gray-50 py-32 rounded-[60px]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight">Client Stories<span className="text-[#F27D26]">.</span></h2>
+            <p className="text-[#4A4A4A] max-w-2xl mx-auto">
+              Don't just take our word for it. Here's what our partners have to say about working with us.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {testimonials.map((t, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-white p-10 rounded-[40px] shadow-xl shadow-black/5 border border-gray-100"
+              >
+                <div className="flex items-center space-x-4 mb-8">
+                  <img src={t.avatar} alt={t.name} className="w-14 h-14 rounded-2xl object-cover" referrerPolicy="no-referrer" />
+                  <div>
+                    <h4 className="font-bold text-[#1A1A1A]">{t.name}</h4>
+                    <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">{t.role}</p>
+                  </div>
+                </div>
+                <p className="text-[#4A4A4A] leading-relaxed italic">"{t.text}"</p>
+                <div className="flex mt-6 text-[#F27D26]">
+                  {[1, 2, 3, 4, 5].map(star => <Star key={star} size={14} fill="currentColor" />)}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-20">
+          <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight">Common Questions<span className="text-[#F27D26]">.</span></h2>
+          <p className="text-[#4A4A4A]">Everything you need to know about our services and process.</p>
+        </div>
+        <div className="space-y-4">
+          {faqs.map((faq, i) => (
+            <div key={i} className="bg-white rounded-3xl border border-gray-100 overflow-hidden">
+              <button 
+                onClick={() => setActiveFaq(activeFaq === i ? null : i)}
+                className="w-full p-8 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+              >
+                <span className="text-lg font-bold text-[#1A1A1A]">{faq.q}</span>
+                <ChevronDown className={`text-[#F27D26] transition-transform duration-300 ${activeFaq === i ? 'rotate-180' : ''}`} />
+              </button>
+              <AnimatePresence>
+                {activeFaq === i && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-8 pt-0 text-[#4A4A4A] leading-relaxed">
+                      {faq.a}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Newsletter */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-[#1A1A1A] rounded-[60px] p-12 md:p-24 flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden">
+          <div className="relative z-10 max-w-xl">
+            <h2 className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tight">Stay Ahead of the <span className="text-[#F27D26]">Curve.</span></h2>
+            <p className="text-gray-400 text-lg">Get the latest digital insights, trends, and exclusive offers delivered straight to your inbox.</p>
+          </div>
+          <div className="relative z-10 w-full max-w-md">
+            <form className="flex flex-col sm:flex-row gap-4">
+              <input 
+                type="email" 
+                placeholder="Enter your email" 
+                className="flex-grow bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:ring-2 focus:ring-[#F27D26] outline-none transition-all"
+              />
+              <button className="bg-[#F27D26] text-white px-8 py-4 rounded-2xl font-bold hover:bg-white hover:text-[#1A1A1A] transition-all flex items-center justify-center">
+                Subscribe <Mail className="ml-2" size={18} />
+              </button>
+            </form>
+            <p className="text-gray-500 text-xs mt-4 text-center sm:text-left">We respect your privacy. Unsubscribe at any time.</p>
+          </div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#F27D26]/10 rounded-full blur-3xl" />
         </div>
       </section>
 

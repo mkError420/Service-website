@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, Timestamp, where, getDocs, writeBatch } from 'firebase/firestore';
 import { Service, Order, UserProfile, ContactMessage, Message } from '../types';
+import { sendEmail } from '../services/emailService';
 import { seedServices } from '../lib/seedData';
 import { 
   Plus, 
@@ -354,6 +355,31 @@ export default function AdminDashboard() {
         replyContent: replyContent,
         repliedAt: Timestamp.now()
       });
+
+      // Send email to the client
+      try {
+        await sendEmail({
+          to: msg.email,
+          subject: `RE: ${msg.subject} - ServiceHub Pro`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #F27D26;">Hello ${msg.name},</h2>
+              <p>Thank you for contacting ServiceHub Pro. We have replied to your inquiry:</p>
+              <div style="background: #f9f9f9; padding: 15px; border-left: 4px solid #F27D26; margin: 20px 0;">
+                <p style="font-style: italic; color: #666; margin-bottom: 10px;">Your message: "${msg.message}"</p>
+                <p style="font-weight: bold; margin-top: 10px;">Our reply:</p>
+                <p>${replyContent}</p>
+              </div>
+              <p>You can also view this reply and chat with us directly in your <a href="${window.location.origin}/dashboard" style="color: #F27D26; font-weight: bold; text-decoration: none;">Dashboard</a>.</p>
+              <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+              <p style="font-size: 12px; color: #999;">Best regards,<br />The ServiceHub Pro Team</p>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        console.error("Failed to send email notification:", emailError);
+        toast.error("Reply saved, but email notification failed to send.");
+      }
 
       // If the sender is a registered user, also send a message to their chat
       const user = allUsers.find(u => u.email === msg.email);
