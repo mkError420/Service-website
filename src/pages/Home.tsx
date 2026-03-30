@@ -155,13 +155,36 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Client Logos */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <p className="text-center text-[#9E9E9E] font-bold uppercase tracking-widest text-xs mb-12">Trusted by Industry Leaders</p>
-        <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
-          {['Google', 'Microsoft', 'Amazon', 'Meta', 'Netflix', 'Apple'].map(brand => (
-            <span key={brand} className="text-3xl font-black tracking-tighter text-[#1A1A1A]">{brand}</span>
-          ))}
+      {/* Client Logos Ticker */}
+      <section className="max-w-full overflow-hidden py-12 border-y border-gray-100">
+        <p className="text-center text-[#9E9E9E] font-bold uppercase tracking-widest text-[10px] mb-8">Trusted by Industry Leaders</p>
+        <div className="flex relative">
+          <motion.div 
+            className="flex whitespace-nowrap gap-20 md:gap-32 items-center"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ 
+              x: {
+                repeat: Infinity,
+                repeatType: "loop",
+                duration: 30,
+                ease: "linear",
+              },
+            }}
+          >
+            {[
+              'Google', 'Microsoft', 'Amazon', 'Meta', 'Netflix', 'Apple', 
+              'Spotify', 'Adobe', 'Slack', 'Salesforce', 'Tesla', 'SpaceX',
+              'Google', 'Microsoft', 'Amazon', 'Meta', 'Netflix', 'Apple', 
+              'Spotify', 'Adobe', 'Slack', 'Salesforce', 'Tesla', 'SpaceX'
+            ].map((brand, i) => (
+              <span 
+                key={i} 
+                className="text-2xl md:text-4xl font-black tracking-tighter text-[#1A1A1A] opacity-20 hover:opacity-100 transition-opacity duration-300 cursor-default px-4"
+              >
+                {brand}
+              </span>
+            ))}
+          </motion.div>
         </div>
       </section>
 
