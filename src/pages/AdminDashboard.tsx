@@ -238,6 +238,42 @@ export default function AdminDashboard() {
       
       await updateDoc(doc(db, 'orders', orderId), updateData);
       toast.success(`Order status updated to ${status}`);
+
+      // Send email notification to client
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        let clientEmail = order.guestEmail;
+        if (!clientEmail) {
+          const client = allUsers.find(u => u.uid === order.clientId);
+          clientEmail = client?.email;
+        }
+
+        if (clientEmail) {
+          try {
+            await sendEmail({
+              to: clientEmail,
+              subject: `Order Status Update: ${order.serviceTitle}`,
+              html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                  <h2 style="color: #F27D26;">Order Status Update</h2>
+                  <p>Hello,</p>
+                  <p>Your order for <strong>${order.serviceTitle}</strong> (ID: <code>${order.id}</code>) has been updated.</p>
+                  <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0; font-weight: bold; color: #1A1A1A;">New Status: <span style="color: #F27D26; text-transform: uppercase;">${status}</span></p>
+                    ${note ? `<p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">Note: ${note}</p>` : ''}
+                  </div>
+                  <p>You can track your order progress by logging into your account.</p>
+                  <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+                  <p style="font-size: 12px; color: #999;">This is an automated notification. Please do not reply to this email.</p>
+                </div>
+              `
+            });
+          } catch (emailError) {
+            console.error("Failed to send status update email:", emailError);
+            // We don't toast error here because the status update itself succeeded
+          }
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `orders/${orderId}`);
       toast.error("Failed to update status");
