@@ -67,17 +67,17 @@ export default function Services() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Header */}
       <div className="mb-16 text-center">
-        <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">Our Services<span className="text-[#F27D26]">.</span></h1>
+        <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">All Services<span className="text-[#F27D26]">.</span></h1>
         <p className="text-[#4A4A4A] max-w-2xl mx-auto text-lg">
           Browse our curated selection of high-end digital services designed to help you succeed in the digital age.
         </p>
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-xl shadow-black/5 mb-16">
-        <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
+      <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-xl shadow-black/5 mb-16 space-y-8">
+        <div className="flex flex-col md:flex-row gap-6 items-center justify-between">
           {/* Search */}
-          <div className="relative w-full lg:max-w-md group">
+          <div className="relative w-full md:max-w-md group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#F27D26] transition-colors" size={20} />
             <input 
               type="text" 
@@ -88,17 +88,33 @@ export default function Services() {
             />
           </div>
 
-          {/* Categories */}
-          <div className="flex items-center space-x-2 overflow-x-auto pb-2 lg:pb-0 w-full lg:w-auto no-scrollbar">
+          {/* Sort */}
+          <div className="relative w-full md:w-auto">
+            <select 
+              className="w-full md:w-64 appearance-none bg-gray-50 border-transparent pl-6 pr-12 py-4 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all cursor-pointer"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option>Newest</option>
+              <option>Price: Low to High</option>
+              <option>Price: High to Low</option>
+            </select>
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+          </div>
+        </div>
+
+        {/* Categories List (Static) */}
+        <div className="pt-6 border-t border-gray-50">
+          <div className="flex flex-wrap items-center gap-4">
             <button
               onClick={() => {
                 setSelectedCategory('All');
                 setSearchParams({});
               }}
-              className={`px-6 py-3 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+              className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${
                 selectedCategory === 'All' 
                   ? 'bg-[#1A1A1A] text-white shadow-lg shadow-black/10' 
-                  : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100'
+                  : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100 border border-transparent hover:border-gray-200'
               }`}
             >
               All
@@ -110,29 +126,15 @@ export default function Services() {
                   setSelectedCategory(cat.name);
                   setSearchParams({ cat: cat.name });
                 }}
-                className={`px-6 py-3 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${
                   selectedCategory === cat.name 
                     ? 'bg-[#1A1A1A] text-white shadow-lg shadow-black/10' 
-                    : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100'
+                    : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100 border border-transparent hover:border-gray-200'
                 }`}
               >
                 {cat.name}
               </button>
             ))}
-          </div>
-
-          {/* Sort */}
-          <div className="relative w-full lg:w-auto">
-            <select 
-              className="w-full lg:w-auto appearance-none bg-gray-50 border-transparent pl-6 pr-12 py-4 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all cursor-pointer"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option>Newest</option>
-              <option>Price: Low to High</option>
-              <option>Price: High to Low</option>
-            </select>
-            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
           </div>
         </div>
       </div>

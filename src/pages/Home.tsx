@@ -273,7 +273,7 @@ export default function Home() {
               </p>
             </div>
             <Link to="/services" className="mt-8 md:mt-0 text-[#F27D26] font-bold flex items-center hover:underline group">
-              View All Services <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" />
+              All Services <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" />
             </Link>
           </div>
           

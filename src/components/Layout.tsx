@@ -78,7 +78,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const navLinks = [
     { name: 'Home', path: '/', icon: HomeIcon },
-    { name: 'Services', path: '/services', icon: Briefcase },
+    { name: 'All Services', path: '/services', icon: Briefcase },
     { name: 'About Us', path: '/about', icon: UserIcon },
     { name: 'Contact', path: '/contact', icon: MessageSquare },
   ];
@@ -255,7 +255,7 @@ export default function Layout({ children }: LayoutProps) {
               </p>
             </div>
             <div>
-              <h4 className="font-bold text-sm uppercase tracking-wider mb-6">Services</h4>
+              <h4 className="font-bold text-sm uppercase tracking-wider mb-6">All Services</h4>
               <ul className="space-y-4 text-sm text-[#4A4A4A]">
                 <li><Link to="/services" className="hover:text-[#F27D26] transition-colors">Web Development</Link></li>
                 <li><Link to="/services" className="hover:text-[#F27D26] transition-colors">WordPress Sites</Link></li>
