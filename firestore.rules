@@ -73,6 +73,15 @@ service cloud.firestore {
     //   - status: string (required, 'new', 'read', 'replied')
     //   - createdAt: timestamp (required)
     //
+    // Collection: categories
+    // Document ID: categoryId
+    // Fields:
+    //   - name: string (required)
+    //   - icon: string (optional)
+    //   - color: string (optional)
+    //   - count: string (optional)
+    //   - createdAt: timestamp (required)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -88,8 +97,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-        (request.auth.token.email == "mk.rabbani.cse@gmail.com" && request.auth.token.email_verified == true)
+        (request.auth.token.email == "mk.rabbani.cse@gmail.com") ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
 
@@ -113,12 +122,20 @@ service cloud.firestore {
       return data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
              data.description is string && data.description.size() > 0 && data.description.size() < 2000 &&
              data.price is number && data.price >= 0 &&
-             data.category in ['MERN Stack', 'WordPress', 'Video Editing', 'Digital Marketing'] &&
+             data.category is string && data.category.size() > 0 &&
              data.active is bool &&
              (!('image' in data) || data.image is string) &&
              (!('features' in data) || data.features is list) &&
              (!('expertId' in data) || data.expertId is string || data.expertId == null) &&
              (!('expertName' in data) || data.expertName is string || data.expertName == null);
+    }
+
+    function isValidCategory(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             (!('icon' in data) || data.icon is string) &&
+             (!('color' in data) || data.color is string) &&
+             (!('count' in data) || data.count is string) &&
+             data.createdAt is timestamp;
     }
 
     function isValidEmail(email) {
@@ -201,6 +218,12 @@ service cloud.firestore {
       allow read, delete: if isAdmin();
       allow update: if isAdmin() && isValidContactMessage(request.resource.data);
       allow create: if isValidContactMessage(request.resource.data);
+    }
+
+    // Categories rules
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // Default deny

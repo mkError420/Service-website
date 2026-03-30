@@ -11,12 +11,21 @@ export interface UserProfile {
   createdAt: Timestamp;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  icon?: string;
+  color?: string;
+  count?: string;
+  createdAt: Timestamp;
+}
+
 export interface Service {
   id: string;
   title: string;
   description: string;
   price: number;
-  category: 'MERN Stack' | 'WordPress' | 'Video Editing' | 'Digital Marketing';
+  category: string;
   image?: string;
   features?: string[];
   active: boolean;

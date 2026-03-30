@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, limit, onSnapshot } from 'firebase/firestore';
-import { Service } from '../types';
+import { collection, query, where, limit, onSnapshot, orderBy } from 'firebase/firestore';
+import { Service, Category } from '../types';
 import ServiceCard from '../components/ServiceCard';
 import { motion, AnimatePresence } from 'motion/react';
+import * as LucideIcons from 'lucide-react';
 import { 
   ArrowRight, 
   CheckCircle2, 
@@ -24,25 +25,39 @@ import {
   Search
 } from 'lucide-react';
 
+const IconComponent = ({ name, ...props }: { name: string; [key: string]: any }) => {
+  const Icon = (LucideIcons as any)[name] || LucideIcons.HelpCircle;
+  return <Icon {...props} />;
+};
+
 export default function Home() {
   const [featuredServices, setFeaturedServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'services'), where('active', '==', true), limit(3));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
-      setFeaturedServices(services);
+    const qFeatured = query(collection(db, 'services'), where('active', '==', true), limit(3));
+    const unsubFeatured = onSnapshot(qFeatured, (snapshot) => {
+      setFeaturedServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
     });
-    return () => unsubscribe();
-  }, []);
 
-  const categories = [
-    { name: 'MERN Stack', icon: Code, count: '24+ Services', color: '#F27D26' },
-    { name: 'WordPress', icon: Monitor, count: '18+ Services', color: '#1A1A1A' },
-    { name: 'Video Editing', icon: Video, count: '32+ Services', color: '#F27D26' },
-    { name: 'Digital Marketing', icon: TrendingUp, count: '45+ Services', color: '#1A1A1A' },
-  ];
+    const qCategories = query(collection(db, 'categories'), orderBy('name', 'asc'));
+    const unsubCategories = onSnapshot(qCategories, (snapshot) => {
+      setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
+    });
+
+    const qAllServices = query(collection(db, 'services'), where('active', '==', true));
+    const unsubAllServices = onSnapshot(qAllServices, (snapshot) => {
+      setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+    });
+
+    return () => {
+      unsubFeatured();
+      unsubCategories();
+      unsubAllServices();
+    };
+  }, []);
 
   const processSteps = [
     { title: 'Discovery', desc: 'We dive deep into your brand, goals, and target audience to build a solid foundation.', icon: Search },
@@ -156,7 +171,7 @@ export default function Home() {
       </section>
 
       {/* Client Logos Ticker */}
-      <section className="max-w-full overflow-hidden py-12 border-y border-gray-100">
+      <section className="max-w-full overflow-hidden py-12 border-y border-gray-100 bg-white">
         <p className="text-center text-[#9E9E9E] font-bold uppercase tracking-widest text-[10px] mb-8">Trusted by Industry Leaders</p>
         <div className="flex relative">
           <motion.div 
@@ -166,22 +181,44 @@ export default function Home() {
               x: {
                 repeat: Infinity,
                 repeatType: "loop",
-                duration: 30,
+                duration: 40,
                 ease: "linear",
               },
             }}
           >
             {[
-              'Google', 'Microsoft', 'Amazon', 'Meta', 'Netflix', 'Apple', 
-              'Spotify', 'Adobe', 'Slack', 'Salesforce', 'Tesla', 'SpaceX',
-              'Google', 'Microsoft', 'Amazon', 'Meta', 'Netflix', 'Apple', 
-              'Spotify', 'Adobe', 'Slack', 'Salesforce', 'Tesla', 'SpaceX'
-            ].map((brand, i) => (
+              { name: 'Google', color: '#4285F4' },
+              { name: 'Microsoft', color: '#00A4EF' },
+              { name: 'Amazon', color: '#FF9900' },
+              { name: 'Meta', color: '#0668E1' },
+              { name: 'Netflix', color: '#E50914' },
+              { name: 'Apple', color: '#555555' },
+              { name: 'Spotify', color: '#1DB954' },
+              { name: 'Adobe', color: '#FF0000' },
+              { name: 'Slack', color: '#4A154B' },
+              { name: 'Salesforce', color: '#00A1E0' },
+              { name: 'Tesla', color: '#E82127' },
+              { name: 'SpaceX', color: '#1A1A1A' }
+            ].concat([
+              { name: 'Google', color: '#4285F4' },
+              { name: 'Microsoft', color: '#00A4EF' },
+              { name: 'Amazon', color: '#FF9900' },
+              { name: 'Meta', color: '#0668E1' },
+              { name: 'Netflix', color: '#E50914' },
+              { name: 'Apple', color: '#555555' },
+              { name: 'Spotify', color: '#1DB954' },
+              { name: 'Adobe', color: '#FF0000' },
+              { name: 'Slack', color: '#4A154B' },
+              { name: 'Salesforce', color: '#00A1E0' },
+              { name: 'Tesla', color: '#E82127' },
+              { name: 'SpaceX', color: '#1A1A1A' }
+            ]).map((brand, i) => (
               <span 
                 key={i} 
-                className="text-2xl md:text-4xl font-black tracking-tighter text-[#1A1A1A] opacity-20 hover:opacity-100 transition-opacity duration-300 cursor-default px-4"
+                className="text-2xl md:text-4xl font-black tracking-tighter cursor-default px-4"
+                style={{ color: brand.color }}
               >
-                {brand}
+                {brand.name}
               </span>
             ))}
           </motion.div>
@@ -199,18 +236,21 @@ export default function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {categories.map((cat, i) => (
             <motion.div 
-              key={cat.name}
+              key={cat.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
               className="group p-10 rounded-[32px] border border-gray-100 hover:border-[#F27D26] hover:bg-white hover:shadow-2xl hover:shadow-[#F27D26]/5 transition-all duration-500 cursor-pointer"
+              onClick={() => window.location.href = `/services?cat=${cat.name}`}
             >
               <div className={`w-16 h-16 rounded-2xl mb-8 flex items-center justify-center transition-colors duration-500`} style={{ backgroundColor: `${cat.color}10` }}>
-                <cat.icon size={32} style={{ color: cat.color }} />
+                <IconComponent name={cat.icon || 'Code'} size={32} style={{ color: cat.color }} />
               </div>
               <h3 className="text-2xl font-bold mb-2 group-hover:text-[#F27D26] transition-colors">{cat.name}</h3>
-              <p className="text-[#9E9E9E] font-medium text-sm">{cat.count}</p>
+              <p className="text-[#9E9E9E] font-medium text-sm">
+                {services.filter(s => s.category === cat.name).length}+ Services
+              </p>
             </motion.div>
           ))}
         </div>

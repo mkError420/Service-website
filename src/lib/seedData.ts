@@ -1,7 +1,17 @@
 import { db } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
 
 export const seedServices = async () => {
+  const categories = [
+    { name: 'MERN Stack', icon: 'Code', color: '#F27D26', createdAt: Timestamp.now() },
+    { name: 'WordPress', icon: 'Monitor', color: '#1A1A1A', createdAt: Timestamp.now() },
+    { name: 'Video Editing', icon: 'Video', color: '#F27D26', createdAt: Timestamp.now() },
+    { name: 'Digital Marketing', icon: 'TrendingUp', color: '#1A1A1A', createdAt: Timestamp.now() },
+  ];
+
+  // Add categories first
+  await Promise.all(categories.map(cat => addDoc(collection(db, 'categories'), cat)));
+
   const services = [
     // MERN Stack (7)
     {

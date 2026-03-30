@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { Service } from '../types';
+import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { Service, Category } from '../types';
 import ServiceCard from '../components/ServiceCard';
 import { Search, Filter, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Services() {
   const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
@@ -16,16 +17,23 @@ export default function Services() {
   const [sortBy, setSortBy] = useState('Newest');
   const [isLoading, setIsLoading] = useState(true);
 
-  const categories = ['All', 'MERN Stack', 'WordPress', 'Video Editing', 'Digital Marketing'];
-
   useEffect(() => {
-    const q = query(collection(db, 'services'), where('active', '==', true));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const qServices = query(collection(db, 'services'), where('active', '==', true));
+    const unsubServices = onSnapshot(qServices, (snapshot) => {
       const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
       setServices(servicesData);
       setIsLoading(false);
     });
-    return () => unsubscribe();
+
+    const qCategories = query(collection(db, 'categories'), orderBy('name', 'asc'));
+    const unsubCategories = onSnapshot(qCategories, (snapshot) => {
+      setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
+    });
+
+    return () => {
+      unsubServices();
+      unsubCategories();
+    };
   }, []);
 
   useEffect(() => {
@@ -78,20 +86,33 @@ export default function Services() {
 
           {/* Categories */}
           <div className="flex items-center space-x-2 overflow-x-auto pb-2 lg:pb-0 w-full lg:w-auto no-scrollbar">
+            <button
+              onClick={() => {
+                setSelectedCategory('All');
+                setSearchParams({});
+              }}
+              className={`px-6 py-3 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+                selectedCategory === 'All' 
+                  ? 'bg-[#1A1A1A] text-white shadow-lg shadow-black/10' 
+                  : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100'
+              }`}
+            >
+              All
+            </button>
             {categories.map((cat) => (
               <button
-                key={cat}
+                key={cat.id}
                 onClick={() => {
-                  setSelectedCategory(cat);
-                  setSearchParams(cat === 'All' ? {} : { cat });
+                  setSelectedCategory(cat.name);
+                  setSearchParams({ cat: cat.name });
                 }}
                 className={`px-6 py-3 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
-                  selectedCategory === cat 
+                  selectedCategory === cat.name 
                     ? 'bg-[#1A1A1A] text-white shadow-lg shadow-black/10' 
                     : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100'
                 }`}
               >
-                {cat}
+                {cat.name}
               </button>
             ))}
           </div>

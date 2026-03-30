@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, Timestamp, where, getDocs, writeBatch } from 'firebase/firestore';
-import { Service, Order, UserProfile, ContactMessage, Message } from '../types';
+import { Service, Order, UserProfile, ContactMessage, Message, Category } from '../types';
 import { sendEmail } from '../services/emailService';
 import { seedServices } from '../lib/seedData';
 import { 
@@ -31,13 +31,15 @@ import {
   DollarSign,
   Briefcase,
   AlertTriangle,
+  Tag,
+  Layers,
   Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
-type AdminTab = 'overview' | 'services' | 'orders' | 'users' | 'messages' | 'mail' | 'settings';
+type AdminTab = 'overview' | 'services' | 'categories' | 'orders' | 'users' | 'messages' | 'mail' | 'settings';
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
@@ -49,6 +51,7 @@ export default function AdminDashboard() {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [chatMessage, setChatMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -72,6 +75,7 @@ export default function AdminDashboard() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
   const [isSeedModalOpen, setIsSeedModalOpen] = useState(false);
   
   // Filters
@@ -90,6 +94,9 @@ export default function AdminDashboard() {
   const [replyingMessageId, setReplyingMessageId] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [revenueFilter, setRevenueFilter] = useState<'7' | '30'>('7');
   
   // Settings State
   const [platformSettings, setPlatformSettings] = useState({
@@ -103,12 +110,18 @@ export default function AdminDashboard() {
     title: '',
     description: '',
     price: 0,
-    category: 'MERN Stack',
+    category: '',
     image: '',
     features: '',
     active: true,
     expertId: '',
     expertName: ''
+  });
+
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: '',
+    icon: 'Code',
+    color: '#F27D26'
   });
 
   useEffect(() => {
@@ -117,31 +130,55 @@ export default function AdminDashboard() {
 
     const unsubServices = onSnapshot(qServices, (snapshot) => {
       setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'services');
     });
 
     const unsubOrders = onSnapshot(qOrders, (snapshot) => {
       setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'orders');
     });
 
     const qEmployees = query(collection(db, 'users'), where('role', '==', 'employee'));
     const unsubEmployees = onSnapshot(qEmployees, (snapshot) => {
       setEmployees(snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'users/employees');
     });
 
     const qAllUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
     const unsubAllUsers = onSnapshot(qAllUsers, (snapshot) => {
-      setAllUsers(snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile)));
+      const users = snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile));
+      setAllUsers(users);
+      const currentUser = users.find(u => u.uid === auth.currentUser?.uid);
+      if (currentUser) {
+        console.log('Current user role:', currentUser.role);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'users/all');
     });
 
     const qContactMessages = query(collection(db, 'contact_messages'), orderBy('createdAt', 'desc'));
     const unsubContactMessages = onSnapshot(qContactMessages, (snapshot) => {
       setContactMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactMessage)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'contact_messages');
     });
 
     const qMessages = query(collection(db, 'messages'), orderBy('createdAt', 'asc'));
     const unsubMessages = onSnapshot(qMessages, (snapshot) => {
       setAllMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'messages');
+    });
+
+    const qCategories = query(collection(db, 'categories'), orderBy('name', 'asc'));
+    const unsubCategories = onSnapshot(qCategories, (snapshot) => {
+      setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'categories');
     });
 
     return () => {
@@ -151,6 +188,7 @@ export default function AdminDashboard() {
       unsubAllUsers();
       unsubContactMessages();
       unsubMessages();
+      unsubCategories();
     };
   }, []);
 
@@ -174,7 +212,7 @@ export default function AdminDashboard() {
         title: '',
         description: '',
         price: 0,
-        category: 'MERN Stack',
+        category: categories[0]?.name || '',
         image: '',
         features: '',
         active: true,
@@ -183,6 +221,63 @@ export default function AdminDashboard() {
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleOpenCategoryModal = (category: Category | null = null) => {
+    if (category) {
+      setEditingCategory(category);
+      setCategoryFormData({
+        name: category.name,
+        icon: category.icon || 'Code',
+        color: category.color || '#F27D26'
+      });
+    } else {
+      setEditingCategory(null);
+      setCategoryFormData({
+        name: '',
+        icon: 'Code',
+        color: '#F27D26'
+      });
+    }
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    try {
+      if (editingCategory) {
+        await updateDoc(doc(db, 'categories', editingCategory.id), {
+          ...categoryFormData,
+        });
+        toast.success('Category updated successfully');
+      } else {
+        await addDoc(collection(db, 'categories'), {
+          ...categoryFormData,
+          createdAt: Timestamp.now()
+        });
+        toast.success('Category added successfully');
+      }
+      setIsCategoryModalOpen(false);
+    } catch (error) {
+      handleFirestoreError(error, editingCategory ? OperationType.UPDATE : OperationType.CREATE, 'categories');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deletingCategoryId) return;
+    setIsProcessing(true);
+    try {
+      await deleteDoc(doc(db, 'categories', deletingCategoryId));
+      toast.success('Category deleted successfully');
+      setDeletingCategoryId(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'categories');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -490,10 +585,44 @@ export default function AdminDashboard() {
   };
 
   const stats = [
-    { label: 'Total Revenue', value: `$${orders.filter(o => o.status !== 'cancelled').reduce((acc, o) => acc + o.price, 0)}`, icon: TrendingUp, color: '#F27D26' },
+    { label: 'Total Revenue', value: `$${orders.filter(o => o.status !== 'cancelled').reduce((acc, o) => acc + o.price, 0).toLocaleString()}`, icon: TrendingUp, color: '#F27D26' },
     { label: 'Active Orders', value: orders.filter(o => ['paid', 'in-progress'].includes(o.status)).length, icon: ShoppingBag, color: '#1A1A1A' },
     { label: 'Total Services', value: services.length, icon: LayoutDashboard, color: '#F27D26' },
+    { label: 'Total Users', value: allUsers.length, icon: Users, color: '#1A1A1A' },
   ];
+
+  const revenueData = useMemo(() => {
+    const days = parseInt(revenueFilter);
+    const now = new Date();
+    const data = [];
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+      
+      const dayRevenue = orders
+        .filter(o => o.status !== 'cancelled' && o.createdAt)
+        .filter(o => {
+          const orderDate = o.createdAt.toDate();
+          return orderDate >= date && orderDate < nextDate;
+        })
+        .reduce((acc, o) => acc + o.price, 0);
+        
+      data.push({
+        label: date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }),
+        value: dayRevenue,
+        date: date
+      });
+    }
+    
+    return data;
+  }, [orders, revenueFilter]);
+
+  const maxRevenue = Math.max(...revenueData.map(d => d.value), 1);
 
   const filteredServices = services.filter(service => {
     const matchesSearch = service.title.toLowerCase().includes(serviceSearchTerm.toLowerCase()) || 
@@ -529,6 +658,7 @@ export default function AdminDashboard() {
   const sidebarItems = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'services', label: 'Services', icon: LayoutDashboard },
+    { id: 'categories', label: 'Categories', icon: Tag },
     { id: 'orders', label: 'Orders', icon: ShoppingBag },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
@@ -587,6 +717,7 @@ export default function AdminDashboard() {
             <p className="text-[#9E9E9E] font-medium text-sm mt-1">
               {activeTab === 'overview' && 'Real-time performance analytics and system health.'}
               {activeTab === 'services' && 'Manage your service catalog and expert assignments.'}
+              {activeTab === 'categories' && 'Manage service categories and icons.'}
               {activeTab === 'orders' && 'Track and fulfill client requests across the pipeline.'}
               {activeTab === 'users' && 'Manage user roles and platform permissions.'}
               {activeTab === 'messages' && 'Live chat and communication with clients.'}
@@ -603,6 +734,15 @@ export default function AdminDashboard() {
               >
                 <Plus size={18} className="mr-2" />
                 New Service
+              </button>
+            )}
+            {activeTab === 'categories' && (
+              <button 
+                onClick={() => handleOpenCategoryModal()}
+                className="bg-[#1A1A1A] text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#F27D26] transition-all shadow-lg flex items-center"
+              >
+                <Plus size={18} className="mr-2" />
+                New Category
               </button>
             )}
             <div className="flex items-center space-x-3 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
@@ -642,23 +782,33 @@ export default function AdminDashboard() {
                 <div className="bg-white p-10 rounded-[40px] border border-gray-100 shadow-sm">
                   <div className="flex justify-between items-center mb-8">
                     <h3 className="text-xl font-black">Revenue Growth</h3>
-                    <select className="bg-gray-50 border-none rounded-xl text-xs font-bold px-4 py-2">
-                      <option>Last 7 Days</option>
-                      <option>Last 30 Days</option>
+                    <select 
+                      value={revenueFilter}
+                      onChange={(e) => setRevenueFilter(e.target.value as '7' | '30')}
+                      className="bg-gray-50 border-none rounded-xl text-xs font-bold px-4 py-2 focus:ring-2 focus:ring-[#F27D26] outline-none"
+                    >
+                      <option value="7">Last 7 Days</option>
+                      <option value="30">Last 30 Days</option>
                     </select>
                   </div>
-                  <div className="h-64 bg-gray-50 rounded-3xl flex items-end justify-between p-8 border border-gray-100">
-                    {[40, 70, 45, 90, 65, 85, 55].map((h, i) => (
-                      <div key={i} className="w-8 bg-[#F27D26]/20 rounded-t-lg relative group transition-all hover:bg-[#F27D26]">
-                        <motion.div 
-                          initial={{ height: 0 }}
-                          animate={{ height: `${h}%` }}
-                          transition={{ delay: i * 0.1, duration: 0.5 }}
-                          className="w-full bg-inherit rounded-t-lg"
-                        />
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#1A1A1A] text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                          ${h * 10}
+                  <div className="h-64 bg-gray-50 rounded-3xl flex items-end justify-between p-8 border border-gray-100 overflow-x-auto">
+                    {revenueData.map((data, i) => (
+                      <div key={i} className="flex-grow flex flex-col items-center group relative min-w-[40px]">
+                        <div className="w-full px-1 flex items-end justify-center h-48">
+                          <motion.div 
+                            initial={{ height: 0 }}
+                            animate={{ height: `${(data.value / maxRevenue) * 100}%` }}
+                            transition={{ delay: i * 0.05, duration: 0.5 }}
+                            className="w-full max-w-[24px] bg-[#F27D26]/20 rounded-t-lg group-hover:bg-[#F27D26] transition-all relative"
+                          >
+                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#1A1A1A] text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-xl">
+                              ${data.value.toLocaleString()}
+                            </div>
+                          </motion.div>
                         </div>
+                        <p className="text-[8px] font-bold text-[#9E9E9E] mt-4 uppercase tracking-tighter truncate w-full text-center">
+                          {data.label}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -711,8 +861,9 @@ export default function AdminDashboard() {
                     value={serviceCategoryFilter}
                     onChange={(e) => setServiceCategoryFilter(e.target.value)}
                   >
-                    {['All', 'MERN Stack', 'WordPress', 'Video Editing', 'Digital Marketing'].map(c => (
-                      <option key={c} value={c}>{c}</option>
+                    <option value="All">All Categories</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
                   </select>
                 </div>
@@ -768,6 +919,65 @@ export default function AdminDashboard() {
                   <p className="text-[#9E9E9E] font-medium">Try adjusting your search or category filters.</p>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'categories' && (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {categories.map((category) => (
+                  <motion.div 
+                    key={category.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-md transition-all group"
+                  >
+                    <div className="flex justify-between items-start mb-6">
+                      <div 
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shadow-black/5"
+                        style={{ backgroundColor: `${category.color}15`, color: category.color }}
+                      >
+                        <Layers size={28} />
+                      </div>
+                      <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => handleOpenCategoryModal(category)}
+                          className="p-2 bg-gray-50 text-gray-400 hover:text-[#F27D26] hover:bg-[#F27D26]/10 rounded-xl transition-all"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button 
+                          onClick={() => setDeletingCategoryId(category.id)}
+                          className="p-2 bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-black text-[#1A1A1A] mb-2">{category.name}</h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">
+                        {services.filter(s => s.category === category.name).length} Services
+                      </span>
+                      <div 
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: category.color }}
+                      />
+                    </div>
+                  </motion.div>
+                ))}
+                
+                <button 
+                  onClick={() => handleOpenCategoryModal()}
+                  className="bg-gray-50 border-2 border-dashed border-gray-200 p-8 rounded-[32px] flex flex-col items-center justify-center text-gray-400 hover:border-[#F27D26] hover:text-[#F27D26] transition-all group"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                    <Plus size={28} />
+                  </div>
+                  <span className="font-bold text-sm tracking-wide uppercase">Add New Category</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -1709,12 +1919,14 @@ export default function AdminDashboard() {
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Category</label>
                     <select 
+                      required
                       className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-bold"
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     >
-                      {['MERN Stack', 'WordPress', 'Video Editing', 'Digital Marketing'].map(c => (
-                        <option key={c} value={c}>{c}</option>
+                      <option value="" disabled>Select Category</option>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
                       ))}
                     </select>
                   </div>
@@ -1821,6 +2033,121 @@ export default function AdminDashboard() {
           </button>
         ))}
       </div>
+
+      {/* Category Modal */}
+      <AnimatePresence>
+        {isCategoryModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-10">
+                <h2 className="text-3xl font-black tracking-tight">
+                  {editingCategory ? 'Edit Category' : 'New Category'}
+                </h2>
+                <button onClick={() => setIsCategoryModalOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveCategory} className="space-y-8">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Category Name</label>
+                  <input 
+                    required
+                    type="text" 
+                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                    value={categoryFormData.name}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                    placeholder="e.g. Mobile Development"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Brand Color</label>
+                  <div className="flex items-center space-x-4">
+                    <input 
+                      type="color" 
+                      className="w-12 h-12 rounded-xl border-none cursor-pointer bg-transparent"
+                      value={categoryFormData.color}
+                      onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
+                    />
+                    <input 
+                      type="text" 
+                      className="flex-grow bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-mono text-sm"
+                      value={categoryFormData.color}
+                      onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Icon Name (Lucide)</label>
+                  <input 
+                    type="text" 
+                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                    value={categoryFormData.icon}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
+                    placeholder="Code, Layout, Video, etc."
+                  />
+                  <p className="text-[10px] text-[#9E9E9E] font-medium italic">Use any icon name from lucide.dev</p>
+                </div>
+
+                <button 
+                  type="submit"
+                  disabled={isProcessing}
+                  className="w-full bg-[#1A1A1A] text-white py-6 rounded-2xl text-xl font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isProcessing ? (
+                    <div className="w-6 h-6 border-3 border-white/30 border-t-[#F27D26] rounded-full animate-spin" />
+                  ) : (editingCategory ? 'Update Category' : 'Create Category')}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Category Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingCategoryId && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={40} />
+              </div>
+              <h2 className="text-2xl font-black mb-4">Delete Category?</h2>
+              <p className="text-[#4A4A4A] mb-10 font-medium">This will remove the category. Services in this category will remain but their category link might break. This action cannot be undone.</p>
+              
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setDeletingCategoryId(null)}
+                  className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleDeleteCategory}
+                  disabled={isProcessing}
+                  className="flex-1 px-8 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isProcessing ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : 'Delete'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Confirmation Modal */}
       <AnimatePresence>
