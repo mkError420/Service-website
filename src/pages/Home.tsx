@@ -40,16 +40,22 @@ export default function Home() {
     const qFeatured = query(collection(db, 'services'), where('active', '==', true), limit(3));
     const unsubFeatured = onSnapshot(qFeatured, (snapshot) => {
       setFeaturedServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+    }, (error) => {
+      console.error("Firestore Error (featured):", error);
     });
 
     const qCategories = query(collection(db, 'categories'), orderBy('name', 'asc'));
     const unsubCategories = onSnapshot(qCategories, (snapshot) => {
       setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
+    }, (error) => {
+      console.error("Firestore Error (categories):", error);
     });
 
     const qAllServices = query(collection(db, 'services'), where('active', '==', true));
     const unsubAllServices = onSnapshot(qAllServices, (snapshot) => {
       setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+    }, (error) => {
+      console.error("Firestore Error (all services):", error);
     });
 
     return () => {

@@ -23,11 +23,15 @@ export default function Services() {
       const servicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
       setServices(servicesData);
       setIsLoading(false);
+    }, (error) => {
+      console.error("Firestore Error (services):", error);
     });
 
     const qCategories = query(collection(db, 'categories'), orderBy('name', 'asc'));
     const unsubCategories = onSnapshot(qCategories, (snapshot) => {
       setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
+    }, (error) => {
+      console.error("Firestore Error (categories):", error);
     });
 
     return () => {

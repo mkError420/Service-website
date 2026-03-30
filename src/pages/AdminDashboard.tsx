@@ -247,9 +247,26 @@ export default function AdminDashboard() {
     setIsProcessing(true);
     try {
       if (editingCategory) {
+        const oldName = editingCategory.name;
+        const newName = categoryFormData.name;
+
         await updateDoc(doc(db, 'categories', editingCategory.id), {
           ...categoryFormData,
         });
+
+        // If name changed, update all services using this category
+        if (oldName !== newName) {
+          const servicesToUpdate = services.filter(s => s.category === oldName);
+          if (servicesToUpdate.length > 0) {
+            const batch = writeBatch(db);
+            servicesToUpdate.forEach(service => {
+              batch.update(doc(db, 'services', service.id), { category: newName });
+            });
+            await batch.commit();
+            toast.info(`Updated ${servicesToUpdate.length} services with new category name`);
+          }
+        }
+        
         toast.success('Category updated successfully');
       } else {
         await addDoc(collection(db, 'categories'), {

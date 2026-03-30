@@ -95,6 +95,16 @@ export default function ServiceDetail() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (auth.currentUser) {
+      setGuestInfo(prev => ({
+        ...prev,
+        name: auth.currentUser?.displayName || '',
+        email: auth.currentUser?.email || '',
+      }));
+    }
+  }, [auth.currentUser]);
+
+  useEffect(() => {
     if (!id) return;
     const fetchService = async () => {
       const docRef = doc(db, 'services', id);
@@ -146,34 +156,41 @@ export default function ServiceDetail() {
       
       // If Stripe is configured, redirect to checkout
       if (stripePromise) {
-        toast.loading("Redirecting to secure payment...");
+        const loadingToast = toast.loading("Redirecting to secure payment...");
         
-        const response = await fetch('/api/create-checkout-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            serviceName: service.title,
-            price: service.price,
-            orderId: docRef.id,
-            successUrl: `${window.location.origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-            cancelUrl: window.location.href,
-          }),
-        });
-
-        const session = await response.json();
-        
-        if (session.error) {
-          throw new Error(session.error);
-        }
-
-        const stripe = await stripePromise;
-        if (stripe) {
-          const { error } = await (stripe as any).redirectToCheckout({
-            sessionId: session.id,
+        try {
+          const response = await fetch('/api/create-checkout-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              serviceName: service.title,
+              price: service.price,
+              orderId: docRef.id,
+              successUrl: `${window.location.origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+              cancelUrl: window.location.href,
+            }),
           });
-          if (error) throw error;
+
+          const session = await response.json();
+          
+          if (session.error) {
+            throw new Error(session.error);
+          }
+
+          const stripe = await stripePromise;
+          if (stripe) {
+            const { error } = await (stripe as any).redirectToCheckout({
+              sessionId: session.id,
+            });
+            if (error) throw error;
+          }
+          toast.dismiss(loadingToast);
+        } catch (stripeError: any) {
+          toast.dismiss(loadingToast);
+          toast.error(`Payment initialization failed: ${stripeError.message}`);
+          console.error("Stripe Error:", stripeError);
         }
       } else {
         // Fallback for demo if Stripe is not configured
