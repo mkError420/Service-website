@@ -334,7 +334,16 @@ export default function ServiceDetail() {
                   Book Service Now
                   <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" />
                 </button>
-                <button className="w-full bg-gray-50 text-[#1A1A1A] py-6 rounded-2xl text-lg font-bold hover:bg-gray-100 transition-all flex items-center justify-center">
+                <button 
+                  onClick={() => {
+                    if (!auth.currentUser) {
+                      toast.error("Please sign in to contact an expert");
+                      return;
+                    }
+                    navigate(`/chat?serviceId=${service.id}`);
+                  }}
+                  className="w-full bg-gray-50 text-[#1A1A1A] py-6 rounded-2xl text-lg font-bold hover:bg-gray-100 transition-all flex items-center justify-center"
+                >
                   <MessageSquare size={20} className="mr-2" />
                   Contact Expert
                 </button>

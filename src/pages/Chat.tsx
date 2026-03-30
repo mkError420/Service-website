@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function Chat() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialOrderId = searchParams.get('orderId');
+  const initialServiceId = searchParams.get('serviceId');
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -20,10 +21,25 @@ export default function Chat() {
   const [showSidebar, setShowSidebar] = useState(true);
 
   useEffect(() => {
-    if (initialOrderId) {
+    if (initialOrderId || initialServiceId) {
       setShowSidebar(false);
     }
-  }, [initialOrderId]);
+
+    if (initialServiceId) {
+      const fetchService = async () => {
+        try {
+          const serviceDoc = await getDoc(doc(db, 'services', initialServiceId));
+          if (serviceDoc.exists()) {
+            const serviceData = serviceDoc.data();
+            setNewMessage(`Hi, I'm interested in your "${serviceData.title}" service. Could you provide more details?`);
+          }
+        } catch (error) {
+          console.error("Error fetching service for chat:", error);
+        }
+      };
+      fetchService();
+    }
+  }, [initialOrderId, initialServiceId]);
 
   useEffect(() => {
     if (!auth.currentUser) return;
