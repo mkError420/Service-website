@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 import { Service, Category } from '../types';
 import ServiceCard from '../components/ServiceCard';
-import { Search, Filter, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Services() {
@@ -16,6 +16,8 @@ export default function Services() {
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('cat') || 'All');
   const [sortBy, setSortBy] = useState('Newest');
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
 
   useEffect(() => {
     const qServices = query(collection(db, 'services'), where('active', '==', true));
@@ -61,7 +63,19 @@ export default function Services() {
     }
 
     setFilteredServices(result);
+    setCurrentPage(1);
   }, [services, selectedCategory, searchTerm, sortBy]);
+
+  const totalPages = Math.ceil(filteredServices.length / ITEMS_PER_PAGE);
+  const paginatedServices = filteredServices.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -147,13 +161,52 @@ export default function Services() {
           ))}
         </div>
       ) : filteredServices.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-          <AnimatePresence mode="popLayout">
-            {filteredServices.map((service, i) => (
-              <ServiceCard key={service.id} service={service} index={i} />
-            ))}
-          </AnimatePresence>
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <AnimatePresence mode="popLayout">
+              {paginatedServices.map((service, i) => (
+                <ServiceCard key={service.id} service={service} index={i} />
+              ))}
+            </AnimatePresence>
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-20 flex justify-center items-center space-x-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-4 rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              <div className="flex items-center space-x-2">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`w-12 h-12 rounded-2xl text-sm font-bold transition-all ${
+                      currentPage === page
+                        ? 'bg-[#1A1A1A] text-white shadow-lg shadow-black/10'
+                        : 'bg-white border border-gray-100 text-[#4A4A4A] hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-4 rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-32 bg-gray-50 rounded-[40px] border-2 border-dashed border-gray-200">
           <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
