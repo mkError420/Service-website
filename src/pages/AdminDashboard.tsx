@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, Timestamp, where, getDocs, writeBatch } from 'firebase/firestore';
 import { Service, Order, UserProfile, ContactMessage, Message, Category, Settings as PlatformSettings, Testimonial, TeamMember } from '../types';
@@ -33,7 +33,8 @@ import {
   AlertTriangle,
   Tag,
   Layers,
-  Send
+  Send,
+  Paperclip
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -106,6 +107,7 @@ export default function AdminDashboard() {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assigningExpert, setAssigningExpert] = useState<TeamMember | null>(null);
   const [revenueFilter, setRevenueFilter] = useState<'7' | '30'>('7');
+  const scrollRef = useRef<HTMLDivElement>(null);
   
   // Settings State
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
@@ -643,6 +645,12 @@ export default function AdminDashboard() {
       setIsProcessing(false);
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'messages' && selectedChatId) {
+      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [allMessages, selectedChatId, activeTab]);
 
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1468,13 +1476,16 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 h-[600px]">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:h-[calc(100vh-280px)] lg:min-h-[600px]">
                 {/* Chat List */}
-                <div className="bg-white rounded-[40px] border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-                  <div className="p-6 border-b border-gray-50 bg-gray-50/50">
+                <div className="bg-white rounded-[40px] border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[300px] lg:h-full">
+                  <div className="p-4 lg:p-8 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
                     <h3 className="text-sm font-black uppercase tracking-widest text-[#9E9E9E]">Active Conversations</h3>
+                    <div className="w-8 h-8 rounded-xl bg-[#F27D26]/10 flex items-center justify-center">
+                      <MessageSquare size={16} className="text-[#F27D26]" />
+                    </div>
                   </div>
-                  <div className="flex-grow overflow-y-auto p-4 space-y-2">
+                  <div className="flex-grow overflow-y-auto p-4 lg:p-6 space-y-3">
                     {(() => {
                       // Prepare all conversations
                       const generalInquiryUids = Array.from(new Set([
@@ -1511,17 +1522,26 @@ export default function AdminDashboard() {
                       // Combine and sort by last message time (descending)
                       const allChats = [...generalChats, ...orderChats].sort((a, b) => b.lastTime - a.lastTime);
 
+                      if (allChats.length === 0) {
+                        return (
+                          <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-50">
+                            <MessageSquare size={32} className="text-gray-300 mb-4" />
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No active chats</p>
+                          </div>
+                        );
+                      }
+
                       return allChats.map(chat => (
                         <button 
                           key={chat.id}
                           onClick={() => setSelectedChatId(chat.id)}
-                          className={`w-full p-4 rounded-2xl transition-all text-left border group ${
+                          className={`w-full p-5 rounded-3xl transition-all text-left border group relative ${
                             selectedChatId === chat.id 
-                              ? 'bg-[#F27D26]/5 border-[#F27D26]/20' 
+                              ? 'bg-white border-[#F27D26]/20 shadow-xl shadow-[#F27D26]/5' 
                               : 'hover:bg-gray-50 border-transparent hover:border-gray-100'
                           }`}
                         >
-                          <div className="flex justify-between items-start mb-1">
+                          <div className="flex justify-between items-start mb-2">
                             <p className="font-black text-sm text-[#1A1A1A]">{chat.title}</p>
                             {chat.lastMsg && (
                               <span className="text-[10px] font-bold text-[#9E9E9E]">
@@ -1529,10 +1549,13 @@ export default function AdminDashboard() {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs font-bold text-[#F27D26] mb-1">{chat.subtitle}</p>
-                          <p className="text-xs text-[#4A4A4A] line-clamp-1 group-hover:text-[#1A1A1A] transition-colors">
+                          <p className="text-[10px] font-black text-[#F27D26] uppercase tracking-widest mb-2">{chat.subtitle}</p>
+                          <p className="text-xs text-[#4A4A4A] line-clamp-1 font-medium group-hover:text-[#1A1A1A] transition-colors">
                             {chat.lastMsg?.text || 'No messages yet'}
                           </p>
+                          {selectedChatId === chat.id && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#F27D26] rounded-r-full" />
+                          )}
                         </button>
                       ));
                     })()}
@@ -1540,26 +1563,34 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Chat Window */}
-                <div className="lg:col-span-2 bg-white rounded-[40px] border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+                <div className="lg:col-span-2 bg-white rounded-[40px] border border-gray-100 shadow-sm flex flex-col overflow-hidden min-h-[1000px] lg:min-h-0 lg:h-full">
                   {selectedChatId ? (
                     <>
-                      <div className="p-8 border-b border-gray-100 flex items-center justify-between">
+                      <div className="p-4 lg:p-8 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
                         <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 rounded-2xl bg-[#F27D26]/10 flex items-center justify-center">
-                            <User size={24} className="text-[#F27D26]" />
+                          <div className="w-10 h-10 lg:w-14 lg:h-14 rounded-2xl bg-[#F27D26]/10 flex items-center justify-center relative">
+                            <User size={20} className="lg:hidden text-[#F27D26]" />
+                            <User size={28} className="hidden lg:block text-[#F27D26]" />
+                            <div className="absolute -bottom-1 -right-1 w-3 h-3 lg:w-4 lg:h-4 bg-green-500 border-2 border-white rounded-full" />
                           </div>
                           <div>
-                            <p className="font-black text-[#1A1A1A]">
+                            <p className="font-black text-lg lg:text-xl text-[#1A1A1A] tracking-tight">
                               {selectedChatId.startsWith('user_') 
                                 ? (allUsers.find(u => u.uid === selectedChatId.replace('user_', ''))?.displayName || 'General Inquiry')
                                 : (orders.find(o => o.id === selectedChatId)?.serviceTitle || 'Order Chat')}
                             </p>
-                            <p className="text-xs font-bold text-green-500 uppercase tracking-widest">Active Session</p>
+                            <div className="flex items-center space-x-2">
+                              <p className="text-[10px] font-black text-green-500 uppercase tracking-widest">Active Session</p>
+                              <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                              <p className="text-[10px] font-black text-[#9E9E9E] uppercase tracking-widest">
+                                {selectedChatId.startsWith('user_') ? 'Client Inquiry' : `Order #${selectedChatId.slice(0, 8)}`}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex-grow p-8 overflow-y-auto bg-gray-50/30 space-y-6">
+                      <div className="flex-grow p-4 lg:p-8 overflow-y-auto bg-[#FDFCFB] space-y-8">
                         {allMessages
                           .filter(m => {
                             if (selectedChatId.startsWith('user_')) {
@@ -1568,46 +1599,69 @@ export default function AdminDashboard() {
                             }
                             return m.orderId === selectedChatId;
                           })
-                          .map((msg) => {
+                          .map((msg, i, arr) => {
                           const isMe = msg.senderId === auth.currentUser?.uid;
+                          const showTime = i === 0 || 
+                            (msg.createdAt?.toMillis() - arr[i-1].createdAt?.toMillis() > 300000); // 5 minutes gap
+
                           return (
-                            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                              <div className={`max-w-[80%] ${isMe ? 'bg-[#1A1A1A] text-white' : 'bg-white border border-gray-100 text-[#1A1A1A]'} p-4 rounded-2xl shadow-sm`}>
-                                <p className="text-sm font-medium">{msg.text}</p>
-                                <p className={`text-[10px] font-bold uppercase tracking-widest mt-2 ${isMe ? 'text-white/50' : 'text-[#9E9E9E]'}`}>
-                                  {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </p>
+                            <div key={msg.id} className="space-y-2">
+                              {showTime && (
+                                <div className="flex justify-center my-4">
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] bg-gray-100 px-3 py-1 rounded-full">
+                                    {msg.createdAt?.toDate().toLocaleDateString([], { month: 'short', day: 'numeric' })} at {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                              )}
+                              <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[75%] group`}>
+                                  <div className={`p-6 rounded-[32px] text-sm font-medium leading-relaxed shadow-sm transition-all ${
+                                    isMe 
+                                      ? 'bg-[#1A1A1A] text-white rounded-tr-none' 
+                                      : 'bg-white border border-gray-100 text-[#1A1A1A] rounded-tl-none'
+                                  }`}>
+                                    {msg.text}
+                                  </div>
+                                  <p className={`text-[10px] font-black uppercase tracking-widest mt-2 text-[#9E9E9E] opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? 'text-right' : 'text-left'}`}>
+                                    {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           );
                         })}
+                        <div ref={scrollRef} />
                       </div>
 
-                      <div className="p-6 border-t border-gray-100 bg-white">
-                        <form onSubmit={handleSendChatMessage} className="relative">
+                      <div className="p-4 lg:p-8 border-t border-gray-100 bg-white">
+                        <form onSubmit={handleSendChatMessage} className="flex items-center space-x-4 bg-gray-50 p-2 rounded-[32px] border border-transparent focus-within:border-[#F27D26] focus-within:bg-white transition-all shadow-sm">
+                          <button type="button" className="p-4 text-gray-400 hover:text-[#F27D26] transition-all">
+                            <Paperclip size={24} />
+                          </button>
                           <input 
                             type="text" 
-                            placeholder="Type your message..."
-                            className="w-full pl-6 pr-20 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#F27D26] transition-all font-medium"
+                            placeholder="Type your message here..."
+                            className="flex-grow bg-transparent border-none focus:ring-0 text-sm font-medium py-4"
                             value={chatMessage}
                             onChange={(e) => setChatMessage(e.target.value)}
                           />
                           <button 
                             type="submit"
                             disabled={!chatMessage.trim()}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#1A1A1A] text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-[#F27D26] transition-all disabled:opacity-50"
+                            className="bg-[#1A1A1A] text-white p-4 rounded-2xl hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 disabled:opacity-50"
                           >
-                            Send
+                            <Send size={24} />
                           </button>
                         </form>
                       </div>
                     </>
                   ) : (
-                    <div className="flex-grow flex flex-col items-center justify-center text-center p-8">
-                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                        <MessageSquare size={32} className="text-gray-200" />
+                    <div className="flex-grow flex flex-col items-center justify-center text-center p-12">
+                      <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                        <MessageSquare size={40} className="text-gray-200" />
                       </div>
-                      <p className="text-[#9E9E9E] font-bold max-w-xs">Select an order from the list to start chatting with the client.</p>
+                      <h3 className="text-xl font-black text-[#1A1A1A] mb-2">No Conversation Selected</h3>
+                      <p className="text-[#9E9E9E] font-bold max-w-xs text-sm">Select a client inquiry or an order from the sidebar to start real-time communication.</p>
                     </div>
                   )}
                 </div>

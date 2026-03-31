@@ -275,28 +275,39 @@ export default function Chat() {
                 <p className="text-[#9E9E9E] font-bold max-w-xs text-sm">Start the conversation by sending a message below. Our team is ready to help!</p>
               </div>
             ) : (
-              activeMessages.map((msg, i) => {
+              activeMessages.map((msg, i, arr) => {
                 const isMe = msg.senderId === auth.currentUser?.uid;
+                const showTime = i === 0 || 
+                  (msg.createdAt?.toMillis() - arr[i-1].createdAt?.toMillis() > 300000); // 5 minutes gap
+
                 return (
-                  <motion.div 
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[70%] ${isMe ? 'order-2' : 'order-1'}`}>
-                      <div className={`p-6 rounded-[32px] text-sm font-medium leading-relaxed shadow-sm ${
-                        isMe 
-                          ? 'bg-[#1A1A1A] text-white rounded-tr-none' 
-                          : 'bg-white border border-gray-100 text-[#1A1A1A] rounded-tl-none'
-                      }`}>
-                        {msg.text}
+                  <div key={msg.id} className="space-y-4">
+                    {showTime && (
+                      <div className="flex justify-center my-6">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E] bg-gray-100 px-3 py-1 rounded-full">
+                          {msg.createdAt?.toDate().toLocaleDateString([], { month: 'short', day: 'numeric' })} at {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
-                      <p className={`text-[10px] font-bold uppercase tracking-widest mt-2 text-[#9E9E9E] ${isMe ? 'text-right' : 'text-left'}`}>
-                        {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  </motion.div>
+                    )}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[70%] group ${isMe ? 'order-2' : 'order-1'}`}>
+                        <div className={`p-6 rounded-[32px] text-sm font-medium leading-relaxed shadow-sm transition-all ${
+                          isMe 
+                            ? 'bg-[#1A1A1A] text-white rounded-tr-none' 
+                            : 'bg-white border border-gray-100 text-[#1A1A1A] rounded-tl-none'
+                        }`}>
+                          {msg.text}
+                        </div>
+                        <p className={`text-[10px] font-black uppercase tracking-widest mt-2 text-[#9E9E9E] opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? 'text-right' : 'text-left'}`}>
+                          {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </motion.div>
+                  </div>
                 );
               })
             )}
