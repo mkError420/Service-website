@@ -648,7 +648,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (activeTab === 'messages' && selectedChatId) {
-      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+      scrollRef.current?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
     }
   }, [allMessages, selectedChatId, activeTab]);
 
@@ -1476,7 +1476,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:h-[calc(100vh-280px)] lg:min-h-[600px]">
+              <div className="flex flex-col lg:grid lg:grid-cols-3 gap-10 lg:h-[calc(100vh-280px)] lg:min-h-[600px]">
                 {/* Chat List */}
                 <div className="bg-white rounded-[40px] border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[300px] lg:h-full">
                   <div className="p-4 lg:p-8 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
@@ -1563,7 +1563,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Chat Window */}
-                <div className="lg:col-span-2 bg-white rounded-[40px] border border-gray-100 shadow-sm flex flex-col overflow-hidden min-h-[1000px] lg:min-h-0 lg:h-full">
+                <div className="lg:col-span-2 bg-white rounded-[40px] border border-gray-100 shadow-sm flex flex-col overflow-hidden h-[600px] lg:h-full">
                   {selectedChatId ? (
                     <>
                       <div className="p-4 lg:p-8 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
@@ -1633,24 +1633,26 @@ export default function AdminDashboard() {
                         <div ref={scrollRef} />
                       </div>
 
-                      <div className="p-4 lg:p-8 border-t border-gray-100 bg-white">
-                        <form onSubmit={handleSendChatMessage} className="flex items-center space-x-4 bg-gray-50 p-2 rounded-[32px] border border-transparent focus-within:border-[#F27D26] focus-within:bg-white transition-all shadow-sm">
-                          <button type="button" className="p-4 text-gray-400 hover:text-[#F27D26] transition-all">
-                            <Paperclip size={24} />
+                      <div className="p-3 lg:p-8 border-t border-gray-100 bg-white">
+                        <form onSubmit={handleSendChatMessage} className="flex items-center space-x-2 lg:space-x-4 bg-gray-50 p-1.5 lg:p-2 rounded-[32px] border border-transparent focus-within:border-[#F27D26] focus-within:bg-white transition-all shadow-sm">
+                          <button type="button" className="p-2 lg:p-4 text-gray-400 hover:text-[#F27D26] transition-all">
+                            <Paperclip size={20} className="lg:hidden" />
+                            <Paperclip size={24} className="hidden lg:block" />
                           </button>
                           <input 
                             type="text" 
-                            placeholder="Type your message here..."
-                            className="flex-grow bg-transparent border-none focus:ring-0 text-sm font-medium py-4"
+                            placeholder="Type here..."
+                            className="flex-grow bg-transparent border-none focus:ring-0 text-sm font-medium py-3 lg:py-4 min-w-0"
                             value={chatMessage}
                             onChange={(e) => setChatMessage(e.target.value)}
                           />
                           <button 
                             type="submit"
                             disabled={!chatMessage.trim()}
-                            className="bg-[#1A1A1A] text-white p-4 rounded-2xl hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 disabled:opacity-50"
+                            className="bg-[#1A1A1A] text-white p-3 lg:p-4 rounded-2xl hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 disabled:opacity-50 shrink-0"
                           >
-                            <Send size={24} />
+                            <Send size={20} className="lg:hidden" />
+                            <Send size={24} className="hidden lg:block" />
                           </button>
                         </form>
                       </div>

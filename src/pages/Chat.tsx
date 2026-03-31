@@ -112,7 +112,7 @@ export default function Chat() {
   }, []);
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollRef.current?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
   }, [messages, selectedChatId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -315,24 +315,26 @@ export default function Chat() {
           </div>
 
           {/* Input Area */}
-          <div className="p-8 border-t border-gray-50 bg-white">
-            <form onSubmit={handleSendMessage} className="flex items-center space-x-4 bg-gray-50 p-2 rounded-[32px] border border-transparent focus-within:border-[#F27D26] focus-within:bg-white transition-all shadow-sm">
-              <button type="button" className="p-4 text-gray-400 hover:text-[#F27D26] transition-all">
-                <Paperclip size={24} />
+          <div className="p-3 lg:p-8 border-t border-gray-50 bg-white">
+            <form onSubmit={handleSendMessage} className="flex items-center space-x-2 lg:space-x-4 bg-gray-50 p-1.5 lg:p-2 rounded-[32px] border border-transparent focus-within:border-[#F27D26] focus-within:bg-white transition-all shadow-sm">
+              <button type="button" className="p-2 lg:p-4 text-gray-400 hover:text-[#F27D26] transition-all">
+                <Paperclip size={20} className="lg:hidden" />
+                <Paperclip size={24} className="hidden lg:block" />
               </button>
               <input 
                 type="text" 
-                placeholder="Type your message here..."
-                className="flex-grow bg-transparent border-none focus:ring-0 text-sm font-medium py-4"
+                placeholder="Type here..."
+                className="flex-grow bg-transparent border-none focus:ring-0 text-sm font-medium py-3 lg:py-4 min-w-0"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
               />
               <button 
                 type="submit"
                 disabled={!newMessage.trim()}
-                className="bg-[#1A1A1A] text-white p-4 rounded-2xl hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 disabled:opacity-50"
+                className="bg-[#1A1A1A] text-white p-3 lg:p-4 rounded-2xl hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 disabled:opacity-50 shrink-0"
               >
-                <Send size={24} />
+                <Send size={20} className="lg:hidden" />
+                <Send size={24} className="hidden lg:block" />
               </button>
             </form>
           </div>
