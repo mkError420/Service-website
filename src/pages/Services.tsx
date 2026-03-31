@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 import { Service, Category } from '../types';
 import ServiceCard from '../components/ServiceCard';
-import { Search, Filter, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, List, X, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Services() {
@@ -17,6 +17,10 @@ export default function Services() {
   const [sortBy, setSortBy] = useState('Newest');
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 10000 });
+  const [minRating, setMinRating] = useState(0);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const ITEMS_PER_PAGE = 12;
 
   useEffect(() => {
@@ -56,15 +60,25 @@ export default function Services() {
       );
     }
 
+    // Price filtering
+    result = result.filter(s => s.price >= priceRange.min && s.price <= priceRange.max);
+
+    // Rating filtering
+    if (minRating > 0) {
+      result = result.filter(s => (s.rating || 0) >= minRating);
+    }
+
     if (sortBy === 'Price: Low to High') {
       result = [...result].sort((a, b) => a.price - b.price);
     } else if (sortBy === 'Price: High to Low') {
       result = [...result].sort((a, b) => b.price - a.price);
+    } else if (sortBy === 'Rating: High to Low') {
+      result = [...result].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 
     setFilteredServices(result);
     setCurrentPage(1);
-  }, [services, selectedCategory, searchTerm, sortBy]);
+  }, [services, selectedCategory, searchTerm, sortBy, priceRange, minRating]);
 
   const totalPages = Math.ceil(filteredServices.length / ITEMS_PER_PAGE);
   const paginatedServices = filteredServices.slice(
@@ -102,55 +116,218 @@ export default function Services() {
             />
           </div>
 
-          {/* Sort */}
-          <div className="relative w-full md:w-auto">
-            <select 
-              className="w-full md:w-64 appearance-none bg-gray-50 border-transparent pl-6 pr-12 py-4 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all cursor-pointer"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            {/* View Mode Toggle */}
+            <div className="hidden md:flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white text-[#F27D26] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <LayoutGrid size={20} />
+              </button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-[#F27D26] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <List size={20} />
+              </button>
+            </div>
+
+            {/* Filter Toggle */}
+            <button 
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className={`flex items-center gap-2 px-6 py-4 rounded-2xl text-sm font-bold transition-all ${isFilterOpen ? 'bg-[#F27D26] text-white' : 'bg-gray-50 text-[#1A1A1A] hover:bg-gray-100'}`}
             >
-              <option>Newest</option>
-              <option>Price: Low to High</option>
-              <option>Price: High to Low</option>
-            </select>
-            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+              <SlidersHorizontal size={18} />
+              <span>Filters</span>
+            </button>
+
+            {/* Sort */}
+            <div className="relative flex-1 md:flex-none">
+              <select 
+                className="w-full md:w-64 appearance-none bg-gray-50 border-transparent pl-6 pr-12 py-4 rounded-2xl text-sm font-bold focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all cursor-pointer"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option>Newest</option>
+                <option>Price: Low to High</option>
+                <option>Price: High to Low</option>
+                <option>Rating: High to Low</option>
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+            </div>
           </div>
         </div>
 
-        {/* Categories List (Static) */}
-        <div className="pt-6 border-t border-gray-50">
-          <div className="flex flex-wrap items-center gap-4">
-            <button
+        {/* Advanced Filters Panel */}
+        <AnimatePresence>
+          {isFilterOpen && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden pt-8 border-t border-gray-50"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                {/* Categories */}
+                <div>
+                  <h4 className="text-sm font-black uppercase tracking-widest text-[#9E9E9E] mb-6">Categories</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedCategory('All');
+                        setSearchParams({});
+                      }}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                        selectedCategory === 'All' 
+                          ? 'bg-[#1A1A1A] text-white' 
+                          : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100'
+                      }`}
+                    >
+                      All
+                    </button>
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => {
+                          setSelectedCategory(cat.name);
+                          setSearchParams({ cat: cat.name });
+                        }}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                          selectedCategory === cat.name 
+                            ? 'bg-[#1A1A1A] text-white' 
+                            : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100'
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Price Range */}
+                <div>
+                  <h4 className="text-sm font-black uppercase tracking-widest text-[#9E9E9E] mb-6">Price Range</h4>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between text-sm font-bold">
+                      <span>${priceRange.min}</span>
+                      <span>${priceRange.max}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="10000" 
+                      step="100"
+                      value={priceRange.max}
+                      onChange={(e) => setPriceRange(prev => ({ ...prev, max: parseInt(e.target.value) }))}
+                      className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#F27D26]"
+                    />
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <label className="text-[10px] font-bold text-[#9E9E9E] uppercase mb-1 block">Min</label>
+                        <input 
+                          type="number" 
+                          value={priceRange.min}
+                          onChange={(e) => setPriceRange(prev => ({ ...prev, min: parseInt(e.target.value) || 0 }))}
+                          className="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-1 focus:ring-[#F27D26]"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[10px] font-bold text-[#9E9E9E] uppercase mb-1 block">Max</label>
+                        <input 
+                          type="number" 
+                          value={priceRange.max}
+                          onChange={(e) => setPriceRange(prev => ({ ...prev, max: parseInt(e.target.value) || 0 }))}
+                          className="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-1 focus:ring-[#F27D26]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rating */}
+                <div>
+                  <h4 className="text-sm font-black uppercase tracking-widest text-[#9E9E9E] mb-6">Minimum Rating</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {[0, 3, 4, 4.5].map((rating) => (
+                      <button
+                        key={rating}
+                        onClick={() => setMinRating(rating)}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all ${
+                          minRating === rating 
+                            ? 'bg-[#1A1A1A] text-white' 
+                            : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100'
+                        }`}
+                      >
+                        {rating === 0 ? 'Any' : (
+                          <>
+                            <span>{rating}+</span>
+                            <Star size={14} className="fill-current" />
+                          </>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Active Filters */}
+        {(selectedCategory !== 'All' || searchTerm || priceRange.min > 0 || priceRange.max < 10000 || minRating > 0) && (
+          <div className="pt-6 border-t border-gray-50 flex flex-wrap items-center gap-3">
+            <span className="text-xs font-bold text-[#9E9E9E] uppercase tracking-widest mr-2">Active Filters:</span>
+            {selectedCategory !== 'All' && (
+              <button 
+                onClick={() => { setSelectedCategory('All'); setSearchParams({}); }}
+                className="flex items-center gap-2 px-4 py-2 bg-[#F27D26]/10 text-[#F27D26] rounded-full text-xs font-bold hover:bg-[#F27D26]/20 transition-all"
+              >
+                <span>Category: {selectedCategory}</span>
+                <X size={14} />
+              </button>
+            )}
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')}
+                className="flex items-center gap-2 px-4 py-2 bg-[#F27D26]/10 text-[#F27D26] rounded-full text-xs font-bold hover:bg-[#F27D26]/20 transition-all"
+              >
+                <span>Search: {searchTerm}</span>
+                <X size={14} />
+              </button>
+            )}
+            {(priceRange.min > 0 || priceRange.max < 10000) && (
+              <button 
+                onClick={() => setPriceRange({ min: 0, max: 10000 })}
+                className="flex items-center gap-2 px-4 py-2 bg-[#F27D26]/10 text-[#F27D26] rounded-full text-xs font-bold hover:bg-[#F27D26]/20 transition-all"
+              >
+                <span>Price: ${priceRange.min} - ${priceRange.max}</span>
+                <X size={14} />
+              </button>
+            )}
+            {minRating > 0 && (
+              <button 
+                onClick={() => setMinRating(0)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#F27D26]/10 text-[#F27D26] rounded-full text-xs font-bold hover:bg-[#F27D26]/20 transition-all"
+              >
+                <span>Rating: {minRating}+</span>
+                <X size={14} />
+              </button>
+            )}
+            <button 
               onClick={() => {
+                setSearchTerm('');
                 setSelectedCategory('All');
                 setSearchParams({});
+                setPriceRange({ min: 0, max: 10000 });
+                setMinRating(0);
               }}
-              className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${
-                selectedCategory === 'All' 
-                  ? 'bg-[#1A1A1A] text-white shadow-lg shadow-black/10' 
-                  : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100 border border-transparent hover:border-gray-200'
-              }`}
+              className="text-xs font-bold text-[#F27D26] hover:underline ml-2"
             >
-              All
+              Clear All
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => {
-                  setSelectedCategory(cat.name);
-                  setSearchParams({ cat: cat.name });
-                }}
-                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${
-                  selectedCategory === cat.name 
-                    ? 'bg-[#1A1A1A] text-white shadow-lg shadow-black/10' 
-                    : 'bg-gray-50 text-[#4A4A4A] hover:bg-gray-100 border border-transparent hover:border-gray-200'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Results Grid */}
@@ -162,10 +339,18 @@ export default function Services() {
         </div>
       ) : filteredServices.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+          <div className={viewMode === 'grid' 
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10" 
+            : "flex flex-col gap-6"
+          }>
             <AnimatePresence mode="popLayout">
               {paginatedServices.map((service, i) => (
-                <ServiceCard key={service.id} service={service} index={i} />
+                <ServiceCard 
+                  key={service.id} 
+                  service={service} 
+                  index={i} 
+                  layout={viewMode}
+                />
               ))}
             </AnimatePresence>
           </div>
@@ -219,6 +404,8 @@ export default function Services() {
               setSearchTerm('');
               setSelectedCategory('All');
               setSearchParams({});
+              setPriceRange({ min: 0, max: 10000 });
+              setMinRating(0);
             }}
             className="mt-8 text-[#F27D26] font-bold hover:underline"
           >

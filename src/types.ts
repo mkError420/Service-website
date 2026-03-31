@@ -31,6 +31,7 @@ export interface Service {
   active: boolean;
   expertId?: string; // Default expert for this service
   expertName?: string;
+  rating?: number;
 }
 
 export interface Order {
