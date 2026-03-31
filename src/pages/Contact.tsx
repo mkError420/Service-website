@@ -99,7 +99,7 @@ export default function Contact() {
               <div className="w-12 h-12 bg-[#1A1A1A] rounded-2xl flex items-center justify-center">
                 <MessageSquare size={24} className="text-white" />
               </div>
-              <h2 className="text-3xl font-black tracking-tight">Send a Message</h2>
+              <h2 className="text-3xl font-black tracking-tight">Send a Mail</h2>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
