@@ -23,33 +23,24 @@
   .embla {
     overflow: hidden;
     touch-action: pan-y pinch-zoom;
-    cursor: grab;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-  }
-  .embla:active {
-    cursor: grabbing;
   }
   .embla__container {
     display: flex;
-    margin-left: -2rem;
-    backface-visibility: hidden;
-    will-change: transform;
+    gap: 2rem;
   }
   .embla__slide {
     flex: 0 0 100%;
     min-width: 0;
-    padding-left: 2rem;
+    position: relative;
   }
   @media (min-width: 768px) {
     .embla__slide {
-      flex: 0 0 50%;
+      flex: 0 0 calc((100% - 2rem) / 2);
     }
   }
   @media (min-width: 1024px) {
     .embla__slide {
-      flex: 0 0 33.333%;
+      flex: 0 0 calc((100% - 4rem) / 3);
     }
   }
 }

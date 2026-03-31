@@ -6,7 +6,6 @@ import { Service, Category, Testimonial, Settings as PlatformSettings } from '..
 import ServiceCard from '../components/ServiceCard';
 import { motion, AnimatePresence } from 'motion/react';
 import useEmblaCarousel from 'embla-carousel-react';
-import Autoplay from 'embla-carousel-autoplay';
 import * as LucideIcons from 'lucide-react';
 import { 
   ArrowRight, 
@@ -42,12 +41,11 @@ export default function Home() {
 
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { 
-      loop: true, 
+      loop: false, 
       align: 'start',
       slidesToScroll: 1,
       containScroll: 'trimSnaps'
-    }, 
-    [Autoplay({ delay: 4000, stopOnInteraction: false })]
+    }
   );
 
   useEffect(() => {
