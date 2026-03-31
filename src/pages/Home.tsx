@@ -206,7 +206,7 @@ export default function Home() {
                     <div className="w-14 h-14 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-[#F27D26] transition-colors">
                       <Play size={18} className="text-[#1A1A1A] group-hover:text-[#F27D26] fill-current" />
                     </div>
-                    <span className="text-sm font-bold uppercase tracking-widest">Watch Showreel</span>
+                    <span className="text-sm font-bold uppercase tracking-widest">Watch More</span>
                   </button>
                 </div>
               </div>
