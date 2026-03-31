@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { auth, signInWithGoogle, logout, db } from '../firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { UserProfile } from '../types';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { UserProfile, Settings as PlatformSettings } from '../types';
 import { 
   LayoutDashboard, 
   LogOut, 
@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   Home as HomeIcon,
   Search,
-  Mail
+  Mail,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster } from 'sonner';
@@ -28,13 +29,14 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
@@ -46,13 +48,21 @@ export default function Layout({ children }: LayoutProps) {
       }
     });
 
+    // Fetch platform settings
+    const unsubscribeSettings = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
+      if (doc.exists()) {
+        setSettings(doc.data() as PlatformSettings);
+      }
+    });
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => {
-      unsubscribe();
+      unsubscribeAuth();
+      unsubscribeSettings();
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
@@ -110,9 +120,12 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <Link to="/" className="flex items-center space-x-2 group">
             <div className="w-10 h-10 bg-[#1A1A1A] rounded-xl flex items-center justify-center group-hover:rotate-6 transition-transform">
-              <span className="text-white font-bold text-xl">S</span>
+              <span className="text-white font-bold text-xl">{(settings?.platformName || 'S')[0]}</span>
             </div>
-            <span className="text-xl font-bold tracking-tight">ServicesHub<span className="text-[#F27D26]">.</span></span>
+            <span className="text-xl font-bold tracking-tight">
+              {settings?.platformName || 'ServicesHub'}
+              <span className="text-[#F27D26]">.</span>
+            </span>
           </Link>
 
           {/* Desktop Nav */}
@@ -236,8 +249,82 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Main Content */}
       <main className="pt-24 min-h-[calc(100vh-80px)]">
-        {children}
+        {settings?.maintenanceMode && !isAdmin ? (
+          <div className="min-h-[60vh] flex items-center justify-center p-4">
+            <div className="max-w-md w-full text-center space-y-6">
+              <div className="w-20 h-20 bg-[#F27D26]/10 text-[#F27D26] rounded-full flex items-center justify-center mx-auto">
+                <AlertTriangle size={40} />
+              </div>
+              <h1 className="text-4xl font-black tracking-tight">Under Maintenance</h1>
+              <p className="text-[#4A4A4A] font-medium leading-relaxed">
+                We're currently performing some scheduled maintenance to improve your experience. 
+                Please check back soon!
+              </p>
+              <div className="pt-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Support Email</p>
+                <p className="font-bold text-[#1A1A1A]">{settings?.supportEmail || 'support@serviceshub.pro'}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          children
+        )}
       </main>
+      
+      {/* Pre-footer: Bangladeshi Industry Leaders Ticker */}
+      <section className="max-w-full overflow-hidden py-12 border-y border-gray-100 bg-white">
+        <p className="text-center text-[#9E9E9E] font-bold uppercase tracking-widest text-[10px] mb-8">Trusted by Bangladeshi Industry Leaders</p>
+        <div className="flex relative">
+          <motion.div 
+            className="flex whitespace-nowrap gap-20 md:gap-32 items-center"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ 
+              x: {
+                repeat: Infinity,
+                repeatType: "loop",
+                duration: 40,
+                ease: "linear",
+              },
+            }}
+          >
+            {[
+              { name: 'Grameenphone', color: '#00A9E0' },
+              { name: 'Robi', color: '#E21E26' },
+              { name: 'Banglalink', color: '#F47920' },
+              { name: 'bKash', color: '#E2136E' },
+              { name: 'Nagad', color: '#ED1C24' },
+              { name: 'Pathao', color: '#E82127' },
+              { name: 'Daraz', color: '#F37021' },
+              { name: 'Chaldal', color: '#FFD200' },
+              { name: 'Shikho', color: '#6366F1' },
+              { name: '10 Minute School', color: '#22C55E' },
+              { name: 'ShopUp', color: '#1A1A1A' },
+              { name: 'Paperfly', color: '#F27D26' }
+            ].concat([
+              { name: 'Grameenphone', color: '#00A9E0' },
+              { name: 'Robi', color: '#E21E26' },
+              { name: 'Banglalink', color: '#F47920' },
+              { name: 'bKash', color: '#E2136E' },
+              { name: 'Nagad', color: '#ED1C24' },
+              { name: 'Pathao', color: '#E82127' },
+              { name: 'Daraz', color: '#F37021' },
+              { name: 'Chaldal', color: '#FFD200' },
+              { name: 'Shikho', color: '#6366F1' },
+              { name: '10 Minute School', color: '#22C55E' },
+              { name: 'ShopUp', color: '#1A1A1A' },
+              { name: 'Paperfly', color: '#F27D26' }
+            ]).map((brand, i) => (
+              <span 
+                key={i} 
+                className="text-2xl md:text-4xl font-black tracking-tighter cursor-default px-4"
+                style={{ color: brand.color }}
+              >
+                {brand.name}
+              </span>
+            ))}
+          </motion.div>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-100 py-12 mt-20">
@@ -246,9 +333,12 @@ export default function Layout({ children }: LayoutProps) {
             <div className="col-span-1 md:col-span-2">
               <Link to="/" className="flex items-center space-x-2 mb-6">
                 <div className="w-8 h-8 bg-[#1A1A1A] rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">S</span>
+                  <span className="text-white font-bold text-lg">{(settings?.platformName || 'S')[0]}</span>
                 </div>
-                <span className="text-lg font-bold">ServicesHub<span className="text-[#F27D26]">.</span></span>
+                <span className="text-lg font-bold">
+                  {settings?.platformName || 'ServicesHub'}
+                  <span className="text-[#F27D26]">.</span>
+                </span>
               </Link>
               <p className="text-[#4A4A4A] max-w-sm text-sm leading-relaxed">
                 Empowering businesses with premium digital solutions. From MERN stack development to high-end video editing, we deliver excellence.
@@ -274,7 +364,7 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           </div>
           <div className="border-t border-gray-100 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-[#9E9E9E]">
-            <p>© 2026 ServicesHub Pro. All rights reserved.</p>
+            <p>© 2026 {settings?.platformName || 'ServicesHub Pro'}. All rights reserved.</p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <a href="#" className="hover:text-[#1A1A1A]">Twitter</a>
               <a href="#" className="hover:text-[#1A1A1A]">LinkedIn</a>

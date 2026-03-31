@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, limit, onSnapshot, orderBy } from 'firebase/firestore';
-import { Service, Category } from '../types';
+import { collection, query, where, limit, onSnapshot, orderBy, doc } from 'firebase/firestore';
+import { Service, Category, Testimonial, Settings as PlatformSettings } from '../types';
 import ServiceCard from '../components/ServiceCard';
 import { motion, AnimatePresence } from 'motion/react';
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 import * as LucideIcons from 'lucide-react';
 import { 
   ArrowRight, 
@@ -34,7 +36,24 @@ export default function Home() {
   const [featuredServices, setFeaturedServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    { 
+      loop: true, 
+      align: 'start',
+      slidesToScroll: 1,
+      dragFree: true,
+      containScroll: false
+    }, 
+    [Autoplay({ delay: 4000, stopOnInteraction: false })]
+  );
+
+  useEffect(() => {
+    if (emblaApi) emblaApi.reInit();
+  }, [emblaApi, testimonials]);
 
   useEffect(() => {
     const qFeatured = query(collection(db, 'services'), where('active', '==', true), limit(3));
@@ -58,10 +77,32 @@ export default function Home() {
       console.error("Firestore Error (all services):", error);
     });
 
+    const qTestimonials = query(collection(db, 'testimonials'), where('featured', '==', true), limit(10));
+    const unsubTestimonials = onSnapshot(qTestimonials, (snapshot) => {
+      const fetchedTestimonials = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Testimonial));
+      console.log("Testimonials fetched:", fetchedTestimonials.length);
+      setTestimonials(fetchedTestimonials);
+    }, (error) => {
+      console.error("Firestore Error (testimonials):", error);
+    });
+
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
+      if (doc.exists()) {
+        console.log("Settings fetched:", doc.data());
+        setSettings(doc.data() as PlatformSettings);
+      } else {
+        console.warn("Settings document 'config' not found.");
+      }
+    }, (error) => {
+      console.error("Firestore Error (settings):", error);
+    });
+
     return () => {
       unsubFeatured();
       unsubCategories();
       unsubAllServices();
+      unsubTestimonials();
+      unsubSettings();
     };
   }, []);
 
@@ -70,12 +111,6 @@ export default function Home() {
     { title: 'Strategy', desc: 'Our experts craft a tailored roadmap designed for maximum impact and scalability.', icon: Layers },
     { title: 'Execution', desc: 'Precision-engineered development and creative work brought to life by our specialists.', icon: Code },
     { title: 'Launch', desc: 'Final optimization and deployment, followed by dedicated post-launch support.', icon: Rocket },
-  ];
-
-  const testimonials = [
-    { name: 'Sarah Johnson', role: 'CEO, TechFlow', text: 'ServiceHub Pro transformed our digital presence. Their attention to detail and technical expertise is unmatched.', avatar: 'https://i.pravatar.cc/150?u=sarah' },
-    { name: 'Michael Chen', role: 'Founder, CreativePulse', text: 'The video editing team is incredible. They captured our brand voice perfectly and delivered ahead of schedule.', avatar: 'https://i.pravatar.cc/150?u=michael' },
-    { name: 'Emma Davis', role: 'Marketing Director, GlobalScale', text: 'Our conversion rates tripled after we switched to their MERN stack solutions. Truly a game-changer.', avatar: 'https://i.pravatar.cc/150?u=emma' },
   ];
 
   const faqs = [
@@ -218,61 +253,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Client Logos Ticker */}
-      <section className="max-w-full overflow-hidden py-12 border-y border-gray-100 bg-white">
-        <p className="text-center text-[#9E9E9E] font-bold uppercase tracking-widest text-[10px] mb-8">Trusted by Industry Leaders</p>
-        <div className="flex relative">
-          <motion.div 
-            className="flex whitespace-nowrap gap-20 md:gap-32 items-center"
-            animate={{ x: ["0%", "-50%"] }}
-            transition={{ 
-              x: {
-                repeat: Infinity,
-                repeatType: "loop",
-                duration: 40,
-                ease: "linear",
-              },
-            }}
-          >
-            {[
-              { name: 'Google', color: '#4285F4' },
-              { name: 'Microsoft', color: '#00A4EF' },
-              { name: 'Amazon', color: '#FF9900' },
-              { name: 'Meta', color: '#0668E1' },
-              { name: 'Netflix', color: '#E50914' },
-              { name: 'Apple', color: '#555555' },
-              { name: 'Spotify', color: '#1DB954' },
-              { name: 'Adobe', color: '#FF0000' },
-              { name: 'Slack', color: '#4A154B' },
-              { name: 'Salesforce', color: '#00A1E0' },
-              { name: 'Tesla', color: '#E82127' },
-              { name: 'SpaceX', color: '#1A1A1A' }
-            ].concat([
-              { name: 'Google', color: '#4285F4' },
-              { name: 'Microsoft', color: '#00A4EF' },
-              { name: 'Amazon', color: '#FF9900' },
-              { name: 'Meta', color: '#0668E1' },
-              { name: 'Netflix', color: '#E50914' },
-              { name: 'Apple', color: '#555555' },
-              { name: 'Spotify', color: '#1DB954' },
-              { name: 'Adobe', color: '#FF0000' },
-              { name: 'Slack', color: '#4A154B' },
-              { name: 'Salesforce', color: '#00A1E0' },
-              { name: 'Tesla', color: '#E82127' },
-              { name: 'SpaceX', color: '#1A1A1A' }
-            ]).map((brand, i) => (
-              <span 
-                key={i} 
-                className="text-2xl md:text-4xl font-black tracking-tighter cursor-default px-4"
-                style={{ color: brand.color }}
-              >
-                {brand.name}
-              </span>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
       {/* Categories Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-20">
@@ -387,7 +367,7 @@ export default function Home() {
             </div>
           </div>
           <div>
-            <h2 className="text-4xl md:text-5xl font-black mb-10 tracking-tight leading-tight">Why Choose <br />ServiceHub Pro<span className="text-[#F27D26]">?</span></h2>
+            <h2 className="text-4xl md:text-5xl font-black mb-10 tracking-tight leading-tight">Why Choose <br />{settings?.platformName || 'ServiceHub Pro'}<span className="text-[#F27D26]">?</span></h2>
             <div className="space-y-8">
               {[
                 { title: 'Expert Professionals', desc: 'Our team consists of industry veterans with years of experience.', icon: ShieldCheck },
@@ -419,30 +399,89 @@ export default function Home() {
               Don't just take our word for it. Here's what our partners have to say about working with us.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((t, i) => (
-              <motion.div 
-                key={i}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white p-10 rounded-[40px] shadow-xl shadow-black/5 border border-gray-100"
-              >
-                <div className="flex items-center space-x-4 mb-8">
-                  <img src={t.avatar} alt={t.name} className="w-14 h-14 rounded-2xl object-cover" referrerPolicy="no-referrer" />
-                  <div>
-                    <h4 className="font-bold text-[#1A1A1A]">{t.name}</h4>
-                    <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">{t.role}</p>
+
+          {testimonials.length > 3 ? (
+            <div className="embla" ref={emblaRef}>
+              <div className="embla__container">
+                {testimonials.map((t) => (
+                  <div key={t.id} className="embla__slide py-4">
+                    <div className="bg-white p-10 rounded-[40px] shadow-xl shadow-black/5 border border-gray-100 h-full flex flex-col select-none">
+                      <div className="flex items-center space-x-4 mb-8">
+                        <img 
+                          src={t.avatar} 
+                          alt={t.name} 
+                          className="w-14 h-14 rounded-2xl object-cover pointer-events-none" 
+                          referrerPolicy="no-referrer" 
+                        />
+                        <div>
+                          <h4 className="font-bold text-[#1A1A1A]">{t.name}</h4>
+                          <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">{t.role}</p>
+                        </div>
+                      </div>
+                      <p className="text-[#4A4A4A] leading-relaxed italic flex-grow">"{t.content}"</p>
+                      <div className="flex mt-6 text-[#F27D26]">
+                        {[...Array(t.rating)].map((_, star) => <Star key={star} size={14} fill="currentColor" />)}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <p className="text-[#4A4A4A] leading-relaxed italic">"{t.text}"</p>
-                <div className="flex mt-6 text-[#F27D26]">
-                  {[1, 2, 3, 4, 5].map(star => <Star key={star} size={14} fill="currentColor" />)}
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {testimonials.length > 0 ? (
+                testimonials.map((t, i) => (
+                  <motion.div 
+                    key={t.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="bg-white p-10 rounded-[40px] shadow-xl shadow-black/5 border border-gray-100 h-full flex flex-col"
+                  >
+                    <div className="flex items-center space-x-4 mb-8">
+                      <img src={t.avatar} alt={t.name} className="w-14 h-14 rounded-2xl object-cover" referrerPolicy="no-referrer" />
+                      <div>
+                        <h4 className="font-bold text-[#1A1A1A]">{t.name}</h4>
+                        <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">{t.role}</p>
+                      </div>
+                    </div>
+                    <p className="text-[#4A4A4A] leading-relaxed italic flex-grow">"{t.content}"</p>
+                    <div className="flex mt-6 text-[#F27D26]">
+                      {[...Array(t.rating)].map((_, star) => <Star key={star} size={14} fill="currentColor" />)}
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                [
+                  { name: 'Sarah Johnson', role: 'CEO, TechFlow', content: 'ServiceHub Pro transformed our digital presence. Their attention to detail and technical expertise is unmatched.', avatar: 'https://i.pravatar.cc/150?u=sarah', rating: 5 },
+                  { name: 'Michael Chen', role: 'Founder, CreativePulse', content: 'The video editing team is incredible. They captured our brand voice perfectly and delivered ahead of schedule.', avatar: 'https://i.pravatar.cc/150?u=michael', rating: 5 },
+                  { name: 'Emma Davis', role: 'Marketing Director, GlobalScale', content: 'Our conversion rates tripled after we switched to their MERN stack solutions. Truly a game-changer.', avatar: 'https://i.pravatar.cc/150?u=emma', rating: 5 },
+                ].map((t, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="bg-white p-10 rounded-[40px] shadow-xl shadow-black/5 border border-gray-100 h-full flex flex-col"
+                  >
+                    <div className="flex items-center space-x-4 mb-8">
+                      <img src={t.avatar} alt={t.name} className="w-14 h-14 rounded-2xl object-cover" referrerPolicy="no-referrer" />
+                      <div>
+                        <h4 className="font-bold text-[#1A1A1A]">{t.name}</h4>
+                        <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">{t.role}</p>
+                      </div>
+                    </div>
+                    <p className="text-[#4A4A4A] leading-relaxed italic flex-grow">"{t.content}"</p>
+                    <div className="flex mt-6 text-[#F27D26]">
+                      {[...Array(t.rating)].map((_, star) => <Star key={star} size={14} fill="currentColor" />)}
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -511,7 +550,7 @@ export default function Home() {
           <div className="relative z-10">
             <h2 className="text-4xl md:text-7xl font-black text-white mb-8 tracking-tighter">Ready to Scale Your <br />Business?</h2>
             <p className="text-white/80 text-xl mb-12 max-w-2xl mx-auto font-medium">
-              Join hundreds of successful businesses that trust ServiceHub Pro for their digital needs.
+              Join hundreds of successful businesses that trust {settings?.platformName || 'ServiceHub Pro'} for their digital needs.
             </p>
             <Link 
               to="/services" 

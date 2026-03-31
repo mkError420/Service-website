@@ -83,3 +83,36 @@ export interface ContactMessage {
   replyContent?: string;
   repliedAt?: Timestamp;
 }
+
+export interface Settings {
+  platformName: string;
+  supportEmail: string;
+  maintenanceMode: boolean;
+  updatedAt?: Timestamp;
+}
+
+export interface Testimonial {
+  id: string;
+  name: string;
+  role?: string;
+  content: string;
+  avatar?: string;
+  rating: number;
+  featured: boolean;
+  createdAt: Timestamp;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  bio: string;
+  image?: string;
+  specialties: string[];
+  socials: {
+    linkedin?: string;
+    twitter?: string;
+  };
+  active: boolean;
+  createdAt: Timestamp;
+}

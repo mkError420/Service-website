@@ -1,8 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Target, Users, Award, Zap } from 'lucide-react';
+import { Target, Users, Award, Zap, Linkedin, Twitter } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, onSnapshot, doc } from 'firebase/firestore';
+import { TeamMember, Settings as PlatformSettings } from '../types';
 
 export default function About() {
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
+
+  useEffect(() => {
+    const unsubTeam = onSnapshot(collection(db, 'team'), (snapshot) => {
+      setTeamMembers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember)));
+    });
+
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
+      if (doc.exists()) {
+        setSettings(doc.data() as PlatformSettings);
+      }
+    });
+
+    return () => {
+      unsubTeam();
+      unsubSettings();
+    };
+  }, []);
+
   const stats = [
     { label: 'Projects Completed', value: '1,200+' },
     { label: 'Happy Clients', value: '450+' },
@@ -74,7 +97,7 @@ export default function About() {
       {/* Values Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-32">
         <div className="space-y-8">
-          <h2 className="text-4xl font-black tracking-tight">Why Choose <span className="text-[#F27D26]">ServicesHub?</span></h2>
+          <h2 className="text-4xl font-black tracking-tight">Why Choose <span className="text-[#F27D26]">{settings?.platformName || 'ServicesHub'}?</span></h2>
           <p className="text-[#4A4A4A] text-lg leading-relaxed">
             We don't just provide services; we build partnerships. Our approach is rooted in understanding your unique business needs and delivering solutions that exceed expectations.
           </p>
@@ -106,6 +129,69 @@ export default function About() {
               </div>
             </motion.div>
           ))}
+        </div>
+      </div>
+
+      {/* Team Section */}
+      <div className="mb-32">
+        <div className="text-center mb-20">
+          <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight">Meet Our <span className="text-[#F27D26]">Experts.</span></h2>
+          <p className="text-[#4A4A4A] max-w-2xl mx-auto">
+            A diverse team of specialists committed to delivering high-performance digital solutions.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          {teamMembers.length > 0 ? (
+            teamMembers.map((member, i) => (
+              <motion.div 
+                key={member.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="group bg-white rounded-[40px] overflow-hidden border border-gray-100 shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-[#F27D26]/10 transition-all duration-500"
+              >
+                <div className="aspect-square overflow-hidden relative">
+                  <img 
+                    src={member.image} 
+                    alt={member.name} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A1A]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end justify-center p-8">
+                    <div className="flex space-x-4">
+                      {member.socials.linkedin && (
+                        <a href={member.socials.linkedin} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1A1A1A] hover:bg-[#F27D26] hover:text-white transition-all">
+                          <Linkedin size={18} />
+                        </a>
+                      )}
+                      {member.socials.twitter && (
+                        <a href={member.socials.twitter} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1A1A1A] hover:bg-[#F27D26] hover:text-white transition-all">
+                          <Twitter size={18} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="p-8 text-center">
+                  <h4 className="text-xl font-black text-[#1A1A1A] mb-1">{member.name}</h4>
+                  <p className="text-xs font-bold text-[#F27D26] uppercase tracking-widest mb-4">{member.role}</p>
+                  <p className="text-sm text-[#4A4A4A] line-clamp-2 mb-6">{member.bio}</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {member.specialties.slice(0, 3).map((spec, idx) => (
+                      <span key={idx} className="text-[10px] font-bold px-3 py-1 bg-gray-50 text-[#9E9E9E] rounded-full uppercase tracking-tighter">
+                        {spec}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            [1, 2, 3, 4].map((_, i) => (
+              <div key={i} className="bg-gray-50 aspect-square rounded-[40px] animate-pulse" />
+            ))
+          )}
         </div>
       </div>
 

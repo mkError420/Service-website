@@ -97,7 +97,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && (
-        (request.auth.token.email == "mk.rabbani.cse@gmail.com") ||
+        (request.auth.token.email == "mk.rabbani.cse@gmail.com" && request.auth.token.email_verified == true) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
@@ -181,6 +181,34 @@ service cloud.firestore {
              (!('repliedAt' in data) || data.repliedAt is timestamp);
     }
 
+    function isValidSettings(data) {
+      return data.platformName is string && data.platformName.size() > 0 && data.platformName.size() < 100 &&
+             data.supportEmail is string && isValidEmail(data.supportEmail) &&
+             data.maintenanceMode is bool &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidTestimonial(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.role is string && data.role.size() > 0 && data.role.size() < 100 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 2000 &&
+             data.avatar is string && data.avatar.size() > 0 &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.featured is bool &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidTeamMember(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.role is string && data.role.size() > 0 && data.role.size() < 100 &&
+             data.bio is string && data.bio.size() > 0 && data.bio.size() < 2000 &&
+             data.image is string && data.image.size() > 0 &&
+             data.specialties is list &&
+             data.socials is map &&
+             data.active is bool &&
+             data.createdAt is timestamp;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -223,7 +251,25 @@ service cloud.firestore {
     // Categories rules
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdmin() && isValidCategory(request.resource.data);
+    }
+
+    // Settings rules
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidSettings(request.resource.data);
+    }
+
+    // Testimonials rules
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidTestimonial(request.resource.data);
+    }
+
+    // Team rules
+    match /team/{memberId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidTeamMember(request.resource.data);
     }
 
     // Default deny

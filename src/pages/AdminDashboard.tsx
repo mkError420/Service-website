@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, Timestamp, where, getDocs, writeBatch } from 'firebase/firestore';
-import { Service, Order, UserProfile, ContactMessage, Message, Category } from '../types';
+import { Service, Order, UserProfile, ContactMessage, Message, Category, Settings as PlatformSettings, Testimonial, TeamMember } from '../types';
 import { sendEmail } from '../services/emailService';
 import { seedServices } from '../lib/seedData';
 import { 
@@ -39,7 +39,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
-type AdminTab = 'overview' | 'services' | 'categories' | 'orders' | 'users' | 'messages' | 'mail' | 'settings';
+type AdminTab = 'overview' | 'services' | 'categories' | 'orders' | 'users' | 'messages' | 'mail' | 'testimonials' | 'team' | 'settings';
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
@@ -52,6 +52,8 @@ export default function AdminDashboard() {
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [chatMessage, setChatMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -95,11 +97,17 @@ export default function AdminDashboard() {
   const [replyContent, setReplyContent] = useState('');
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isTestimonialModalOpen, setIsTestimonialModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
+  const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
+  const [deletingTestimonialId, setDeletingTestimonialId] = useState<string | null>(null);
+  const [deletingTeamMemberId, setDeletingTeamMemberId] = useState<string | null>(null);
   const [revenueFilter, setRevenueFilter] = useState<'7' | '30'>('7');
   
   // Settings State
-  const [platformSettings, setPlatformSettings] = useState({
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
     platformName: 'ExpertHire',
     supportEmail: 'support@experthire.com',
     maintenanceMode: false
@@ -122,6 +130,28 @@ export default function AdminDashboard() {
     name: '',
     icon: 'Code',
     color: '#F27D26'
+  });
+
+  const [testimonialFormData, setTestimonialFormData] = useState({
+    name: '',
+    role: '',
+    content: '',
+    avatar: '',
+    rating: 5,
+    featured: false
+  });
+
+  const [teamFormData, setTeamFormData] = useState({
+    name: '',
+    role: '',
+    bio: '',
+    image: '',
+    specialties: '',
+    socials: {
+      linkedin: '',
+      twitter: ''
+    },
+    active: true
   });
 
   useEffect(() => {
@@ -181,6 +211,28 @@ export default function AdminDashboard() {
       handleFirestoreError(error, OperationType.GET, 'categories');
     });
 
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'config'), (snapshot) => {
+      if (snapshot.exists()) {
+        setPlatformSettings(snapshot.data() as PlatformSettings);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/config');
+    });
+
+    const qTestimonials = query(collection(db, 'testimonials'), orderBy('createdAt', 'desc'));
+    const unsubTestimonials = onSnapshot(qTestimonials, (snapshot) => {
+      setTestimonials(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Testimonial)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'testimonials');
+    });
+
+    const qTeam = query(collection(db, 'team'), orderBy('createdAt', 'desc'));
+    const unsubTeam = onSnapshot(qTeam, (snapshot) => {
+      setTeamMembers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'team');
+    });
+
     return () => {
       unsubServices();
       unsubOrders();
@@ -189,6 +241,9 @@ export default function AdminDashboard() {
       unsubContactMessages();
       unsubMessages();
       unsubCategories();
+      unsubSettings();
+      unsubTestimonials();
+      unsubTeam();
     };
   }, []);
 
@@ -240,6 +295,177 @@ export default function AdminDashboard() {
       });
     }
     setIsCategoryModalOpen(true);
+  };
+
+  const handleOpenTestimonialModal = (testimonial: Testimonial | null = null) => {
+    if (testimonial) {
+      setEditingTestimonial(testimonial);
+      setTestimonialFormData({
+        name: testimonial.name,
+        role: testimonial.role || '',
+        content: testimonial.content,
+        avatar: testimonial.avatar || '',
+        rating: testimonial.rating,
+        featured: testimonial.featured || false
+      });
+    } else {
+      setEditingTestimonial(null);
+      setTestimonialFormData({
+        name: '',
+        role: '',
+        content: '',
+        avatar: '',
+        rating: 5,
+        featured: false
+      });
+    }
+    setIsTestimonialModalOpen(true);
+  };
+
+  const handleOpenTeamModal = (member: TeamMember | null = null) => {
+    if (member) {
+      setEditingTeamMember(member);
+      setTeamFormData({
+        name: member.name,
+        role: member.role,
+        bio: member.bio,
+        image: member.image || '',
+        specialties: member.specialties?.join(', ') || '',
+        socials: {
+          linkedin: member.socials?.linkedin || '',
+          twitter: member.socials?.twitter || ''
+        },
+        active: member.active
+      });
+    } else {
+      setEditingTeamMember(null);
+      setTeamFormData({
+        name: '',
+        role: '',
+        bio: '',
+        image: '',
+        specialties: '',
+        socials: {
+          linkedin: '',
+          twitter: ''
+        },
+        active: true
+      });
+    }
+    setIsTeamModalOpen(true);
+  };
+
+  const handleSaveTestimonial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    try {
+      const data = {
+        name: testimonialFormData.name,
+        role: testimonialFormData.role,
+        content: testimonialFormData.content,
+        avatar: testimonialFormData.avatar,
+        rating: testimonialFormData.rating,
+        featured: testimonialFormData.featured,
+        createdAt: editingTestimonial ? editingTestimonial.createdAt : Timestamp.now()
+      };
+
+      if (editingTestimonial) {
+        await updateDoc(doc(db, 'testimonials', editingTestimonial.id), data);
+        toast.success('Testimonial updated successfully');
+      } else {
+        await addDoc(collection(db, 'testimonials'), data);
+        toast.success('Testimonial added successfully');
+      }
+      setIsTestimonialModalOpen(false);
+      setEditingTestimonial(null);
+      setTestimonialFormData({
+        name: '',
+        role: '',
+        content: '',
+        avatar: '',
+        rating: 5,
+        featured: false
+      });
+    } catch (error) {
+      handleFirestoreError(error, editingTestimonial ? OperationType.UPDATE : OperationType.CREATE, 'testimonials');
+      toast.error('Failed to save testimonial');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSaveTeamMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    try {
+      const data = {
+        name: teamFormData.name,
+        role: teamFormData.role,
+        bio: teamFormData.bio,
+        image: teamFormData.image,
+        specialties: typeof teamFormData.specialties === 'string' 
+          ? teamFormData.specialties.split(',').map(s => s.trim()).filter(s => s !== '')
+          : teamFormData.specialties,
+        socials: teamFormData.socials,
+        active: teamFormData.active,
+        createdAt: editingTeamMember ? editingTeamMember.createdAt : Timestamp.now()
+      };
+
+      if (editingTeamMember) {
+        await updateDoc(doc(db, 'team', editingTeamMember.id), data);
+        toast.success('Team member updated successfully');
+      } else {
+        await addDoc(collection(db, 'team'), data);
+        toast.success('Team member added successfully');
+      }
+      setIsTeamModalOpen(false);
+      setEditingTeamMember(null);
+      setTeamFormData({
+        name: '',
+        role: '',
+        bio: '',
+        image: '',
+        specialties: '',
+        socials: {
+          linkedin: '',
+          twitter: ''
+        },
+        active: true
+      });
+    } catch (error) {
+      handleFirestoreError(error, editingTeamMember ? OperationType.UPDATE : OperationType.CREATE, 'team');
+      toast.error('Failed to save team member');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteTestimonial = async (id: string) => {
+    setIsProcessing(true);
+    try {
+      await deleteDoc(doc(db, 'testimonials', id));
+      toast.success('Testimonial deleted successfully');
+      setDeletingTestimonialId(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `testimonials/${id}`);
+      toast.error('Failed to delete testimonial');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteTeamMember = async (id: string) => {
+    setIsProcessing(true);
+    try {
+      await deleteDoc(doc(db, 'team', id));
+      toast.success('Team member deleted successfully');
+      setDeletingTeamMemberId(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `team/${id}`);
+      toast.error('Failed to delete team member');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSaveCategory = async (e: React.FormEvent) => {
@@ -465,11 +691,25 @@ export default function AdminDashboard() {
   const handleSaveSettings = async () => {
     setIsProcessing(true);
     try {
-      // In a real app, we'd save this to a 'settings' collection
-      // For now, we'll just simulate it
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const settingsRef = doc(db, 'settings', 'config');
+      await updateDoc(settingsRef, {
+        ...platformSettings,
+        updatedAt: Timestamp.now()
+      }).catch(async (error) => {
+        // If document doesn't exist, create it
+        if (error.code === 'not-found') {
+          const { setDoc } = await import('firebase/firestore');
+          await setDoc(settingsRef, {
+            ...platformSettings,
+            updatedAt: Timestamp.now()
+          });
+        } else {
+          throw error;
+        }
+      });
       toast.success("Platform configuration saved");
     } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'settings/config');
       toast.error("Failed to save settings");
     } finally {
       setIsProcessing(false);
@@ -680,6 +920,8 @@ export default function AdminDashboard() {
     { id: 'users', label: 'Users', icon: Users },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'mail', label: 'Mail', icon: Mail },
+    { id: 'testimonials', label: 'Testimonials', icon: MessageSquare },
+    { id: 'team', label: 'Team', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -739,6 +981,8 @@ export default function AdminDashboard() {
               {activeTab === 'users' && 'Manage user roles and platform permissions.'}
               {activeTab === 'messages' && 'Live chat and communication with clients.'}
               {activeTab === 'mail' && 'Manage inquiries from the contact form.'}
+              {activeTab === 'testimonials' && 'Manage client feedback and social proof.'}
+              {activeTab === 'team' && 'Manage your expert team and public profiles.'}
               {activeTab === 'settings' && 'Configure platform defaults and system settings.'}
             </p>
           </div>
@@ -760,6 +1004,24 @@ export default function AdminDashboard() {
               >
                 <Plus size={18} className="mr-2" />
                 New Category
+              </button>
+            )}
+            {activeTab === 'testimonials' && (
+              <button 
+                onClick={() => handleOpenTestimonialModal()}
+                className="bg-[#1A1A1A] text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#F27D26] transition-all shadow-lg flex items-center"
+              >
+                <Plus size={18} className="mr-2" />
+                New Testimonial
+              </button>
+            )}
+            {activeTab === 'team' && (
+              <button 
+                onClick={() => handleOpenTeamModal()}
+                className="bg-[#1A1A1A] text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#F27D26] transition-all shadow-lg flex items-center"
+              >
+                <Plus size={18} className="mr-2" />
+                New Member
               </button>
             )}
             <div className="flex items-center space-x-3 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
@@ -1475,6 +1737,103 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {activeTab === 'testimonials' && (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {testimonials.length === 0 ? (
+                  <div className="col-span-full bg-white p-20 rounded-[40px] border border-gray-100 text-center">
+                    <MessageSquare size={48} className="mx-auto text-gray-200 mb-6" />
+                    <h3 className="text-xl font-bold text-[#1A1A1A]">No testimonials yet</h3>
+                    <p className="text-[#9E9E9E]">Add some client feedback to build trust.</p>
+                  </div>
+                ) : (
+                  testimonials.map((t) => (
+                    <div key={t.id} className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="flex items-center space-x-4">
+                          <img 
+                            src={t.avatar || `https://ui-avatars.com/api/?name=${t.name}&background=random`} 
+                            className="w-12 h-12 rounded-xl object-cover" 
+                            alt={t.name} 
+                          />
+                          <div>
+                            <h4 className="font-black text-[#1A1A1A]">{t.name}</h4>
+                            <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">{t.role}</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleOpenTestimonialModal(t)} className="p-2 bg-gray-50 text-[#1A1A1A] rounded-lg hover:bg-[#F27D26] hover:text-white transition-all">
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteTestimonial(t.id)} className="p-2 bg-gray-50 text-[#1A1A1A] rounded-lg hover:bg-red-500 hover:text-white transition-all">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-[#4A4A4A] leading-relaxed italic mb-6">"{t.content}"</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex text-[#F27D26]">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <TrendingUp key={i} size={14} className={i < t.rating ? 'fill-current' : 'text-gray-200'} />
+                          ))}
+                        </div>
+                        {t.featured && (
+                          <span className="px-2 py-1 bg-orange-100 text-[#F27D26] text-[10px] font-black uppercase tracking-widest rounded">Featured</span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'team' && (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {teamMembers.length === 0 ? (
+                  <div className="col-span-full bg-white p-20 rounded-[40px] border border-gray-100 text-center">
+                    <Users size={48} className="mx-auto text-gray-200 mb-6" />
+                    <h3 className="text-xl font-bold text-[#1A1A1A]">No team members yet</h3>
+                    <p className="text-[#9E9E9E]">Build your team and showcase your experts.</p>
+                  </div>
+                ) : (
+                  teamMembers.map((m) => (
+                    <div key={m.id} className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="flex items-center space-x-4">
+                          <img 
+                            src={m.image || `https://ui-avatars.com/api/?name=${m.name}&background=random`} 
+                            className="w-16 h-16 rounded-2xl object-cover" 
+                            alt={m.name} 
+                          />
+                          <div>
+                            <h4 className="text-lg font-black text-[#1A1A1A]">{m.name}</h4>
+                            <p className="text-xs text-[#F27D26] font-bold uppercase tracking-widest">{m.role}</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleOpenTeamModal(m)} className="p-2 bg-gray-50 text-[#1A1A1A] rounded-lg hover:bg-[#F27D26] hover:text-white transition-all">
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteTeamMember(m.id)} className="p-2 bg-gray-50 text-[#1A1A1A] rounded-lg hover:bg-red-500 hover:text-white transition-all">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-[#4A4A4A] leading-relaxed line-clamp-3 mb-6">{m.bio}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {m.specialties?.map((s, i) => (
+                          <span key={i} className="px-3 py-1 bg-gray-50 text-[#9E9E9E] text-[10px] font-bold uppercase tracking-widest rounded-full">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'settings' && (
             <div className="max-w-2xl space-y-8">
               <div className="bg-white p-10 rounded-[40px] border border-gray-100 shadow-sm">
@@ -1880,6 +2239,314 @@ export default function AdminDashboard() {
                   className="w-full px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all disabled:opacity-50"
                 >
                   Cancel and Keep Inventory
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Testimonial Modal */}
+      <AnimatePresence>
+        {isTestimonialModalOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-xl rounded-[40px] p-10 shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-black tracking-tight">
+                  {editingTestimonial ? 'Edit Testimonial' : 'New Testimonial'}
+                </h2>
+                <button onClick={() => setIsTestimonialModalOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveTestimonial} className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Client Name</label>
+                    <input 
+                      required
+                      type="text"
+                      className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                      value={testimonialFormData.name}
+                      onChange={(e) => setTestimonialFormData({...testimonialFormData, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Role / Company</label>
+                    <input 
+                      required
+                      type="text"
+                      className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                      value={testimonialFormData.role}
+                      onChange={(e) => setTestimonialFormData({...testimonialFormData, role: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Avatar URL</label>
+                  <input 
+                    required
+                    type="url"
+                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                    value={testimonialFormData.avatar}
+                    onChange={(e) => setTestimonialFormData({...testimonialFormData, avatar: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Rating (1-5)</label>
+                  <input 
+                    required
+                    type="number"
+                    min="1"
+                    max="5"
+                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                    value={testimonialFormData.rating}
+                    onChange={(e) => setTestimonialFormData({...testimonialFormData, rating: parseInt(e.target.value)})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Content</label>
+                  <textarea 
+                    required
+                    rows={4}
+                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                    value={testimonialFormData.content}
+                    onChange={(e) => setTestimonialFormData({...testimonialFormData, content: e.target.value})}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-3 ml-4">
+                  <input 
+                    type="checkbox"
+                    id="featured"
+                    className="w-5 h-5 rounded border-gray-300 text-[#F27D26] focus:ring-[#F27D26]"
+                    checked={testimonialFormData.featured}
+                    onChange={(e) => setTestimonialFormData({...testimonialFormData, featured: e.target.checked})}
+                  />
+                  <label htmlFor="featured" className="text-sm font-bold text-[#4A4A4A]">Feature on Homepage</label>
+                </div>
+
+                <div className="pt-6 flex gap-4">
+                  <button 
+                    type="button"
+                    onClick={() => setIsTestimonialModalOpen(false)}
+                    className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isProcessing}
+                    className="flex-1 px-8 py-4 bg-[#F27D26] text-white rounded-2xl font-bold hover:bg-[#E06C15] transition-all shadow-lg shadow-[#F27D26]/20 disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {isProcessing ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                    ) : editingTestimonial ? 'Update Testimonial' : 'Save Testimonial'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Team Member Modal */}
+      <AnimatePresence>
+        {isTeamModalOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-xl rounded-[40px] p-10 shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-black tracking-tight">
+                  {editingTeamMember ? 'Edit Team Member' : 'New Team Member'}
+                </h2>
+                <button onClick={() => setIsTeamModalOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveTeamMember} className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Full Name</label>
+                    <input 
+                      required
+                      type="text"
+                      className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                      value={teamFormData.name}
+                      onChange={(e) => setTeamFormData({...teamFormData, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Position</label>
+                    <input 
+                      required
+                      type="text"
+                      className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                      value={teamFormData.role}
+                      onChange={(e) => setTeamFormData({...teamFormData, role: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Profile Image URL</label>
+                  <input 
+                    required
+                    type="url"
+                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                    value={teamFormData.image}
+                    onChange={(e) => setTeamFormData({...teamFormData, image: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Bio</label>
+                  <textarea 
+                    required
+                    rows={3}
+                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                    value={teamFormData.bio}
+                    onChange={(e) => setTeamFormData({...teamFormData, bio: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Specialties (comma separated)</label>
+                  <input 
+                    type="text"
+                    placeholder="React, Node.js, UI/UX"
+                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                    value={teamFormData.specialties}
+                    onChange={(e) => setTeamFormData({...teamFormData, specialties: e.target.value})}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">LinkedIn URL</label>
+                    <input 
+                      type="url"
+                      className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                      value={teamFormData.socials.linkedin || ''}
+                      onChange={(e) => setTeamFormData({...teamFormData, socials: {...teamFormData.socials, linkedin: e.target.value}})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Twitter URL</label>
+                    <input 
+                      type="url"
+                      className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                      value={teamFormData.socials.twitter || ''}
+                      onChange={(e) => setTeamFormData({...teamFormData, socials: {...teamFormData.socials, twitter: e.target.value}})}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-6 flex gap-4">
+                  <button 
+                    type="button"
+                    onClick={() => setIsTeamModalOpen(false)}
+                    className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isProcessing}
+                    className="flex-1 px-8 py-4 bg-[#F27D26] text-white rounded-2xl font-bold hover:bg-[#E06C15] transition-all shadow-lg shadow-[#F27D26]/20 disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {isProcessing ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                    ) : editingTeamMember ? 'Update Member' : 'Save Member'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Testimonial Modal */}
+      <AnimatePresence>
+        {deletingTestimonialId && (
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={40} />
+              </div>
+              <h2 className="text-2xl font-black mb-4">Delete Testimonial?</h2>
+              <p className="text-[#4A4A4A] mb-10">This action cannot be undone. Are you sure you want to remove this testimonial?</p>
+              
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setDeletingTestimonialId(null)}
+                  className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (deletingTestimonialId) {
+                      handleDeleteTestimonial(deletingTestimonialId);
+                    }
+                  }}
+                  className="flex-1 px-8 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Team Member Modal */}
+      <AnimatePresence>
+        {deletingTeamMemberId && (
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={40} />
+              </div>
+              <h2 className="text-2xl font-black mb-4">Remove Team Member?</h2>
+              <p className="text-[#4A4A4A] mb-10">This action cannot be undone. Are you sure you want to remove this member from your team?</p>
+              
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setDeletingTeamMemberId(null)}
+                  className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => deletingTeamMemberId && handleDeleteTeamMember(deletingTeamMemberId)}
+                  className="flex-1 px-8 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                >
+                  Remove
                 </button>
               </div>
             </motion.div>

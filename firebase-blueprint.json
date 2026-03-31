@@ -114,6 +114,51 @@
         "repliedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "email", "subject", "message", "status"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Platform-wide settings",
+      "type": "object",
+      "properties": {
+        "platformName": { "type": "string" },
+        "supportEmail": { "type": "string" },
+        "maintenanceMode": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["platformName", "supportEmail"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "Client testimonials",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "content": { "type": "string" },
+        "avatar": { "type": "string" },
+        "rating": { "type": "number" },
+        "featured": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "content", "rating"]
+    },
+    "TeamMember": {
+      "title": "TeamMember",
+      "description": "Team members/experts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "bio": { "type": "string" },
+        "image": { "type": "string" },
+        "specialties": { "type": "array", "items": { "type": "string" } },
+        "social": { "type": "object", "properties": { "linkedin": { "type": "string" }, "twitter": { "type": "string" } } },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "role", "bio"]
     }
   },
   "firestore": {
@@ -123,6 +168,9 @@
     "/reviews/{reviewId}": { "schema": "Review", "description": "Service reviews" },
     "/messages/{messageId}": { "schema": "Message", "description": "Chat messages" },
     "/contact_messages/{messageId}": { "schema": "ContactMessage", "description": "Contact form submissions" },
-    "/categories/{categoryId}": { "schema": "Category", "description": "Service categories" }
+    "/categories/{categoryId}": { "schema": "Category", "description": "Service categories" },
+    "/settings/config": { "schema": "Settings", "description": "Global platform configuration" },
+    "/testimonials/{testimonialId}": { "schema": "Testimonial", "description": "Client testimonials" },
+    "/team/{memberId}": { "schema": "TeamMember", "description": "Team members" }
   }
 }

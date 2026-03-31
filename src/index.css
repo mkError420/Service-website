@@ -19,4 +19,33 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .embla {
+    overflow: hidden;
+    touch-action: pan-y pinch-zoom;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .embla:active {
+    cursor: grabbing;
+  }
+  .embla__container {
+    display: flex;
+    backface-visibility: hidden;
+    will-change: transform;
+    touch-action: pan-y pinch-zoom;
+  }
+  .embla__slide {
+    flex: 0 0 100%;
+    min-width: 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  @media (min-width: 768px) {
+    .embla__slide {
+      flex: 0 0 33.333%;
+    }
+  }
 }
