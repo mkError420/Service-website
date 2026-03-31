@@ -99,13 +99,10 @@ export default function Layout({ children }: LayoutProps) {
   const authLinks = isAdmin 
     ? [
         { name: 'Admin Panel', path: '/admin', icon: ShieldCheck },
-        { name: 'Messages', path: '/admin?tab=messages', icon: MessageSquare },
-        { name: 'Mail', path: '/admin?tab=mail', icon: Mail },
       ]
     : user 
     ? [
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'Messages', path: '/chat', icon: MessageSquare },
       ]
     : [];
 
@@ -129,7 +126,7 @@ export default function Layout({ children }: LayoutProps) {
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden lg:flex items-center space-x-8">
             {navLinks.map((link) => (
               <Link 
                 key={link.path} 
@@ -183,7 +180,7 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Mobile Menu Button */}
           <button 
-            className="md:hidden p-2"
+            className="lg:hidden p-2"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -198,7 +195,7 @@ export default function Layout({ children }: LayoutProps) {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 z-40 bg-white pt-24 px-6 md:hidden"
+            className="fixed inset-0 z-40 bg-white pt-24 px-6 lg:hidden"
           >
             <div className="flex flex-col space-y-6">
               {navLinks.map((link) => (

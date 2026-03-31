@@ -299,7 +299,7 @@ export default function Home() {
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {featuredServices.length > 0 ? (
               featuredServices.map((service, i) => (
                 <div key={service.id} className="text-[#1A1A1A]">
@@ -323,11 +323,11 @@ export default function Home() {
             A streamlined, transparent process designed to take your project from concept to reality with zero friction.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {processSteps.map((step, i) => (
             <div key={i} className="relative">
               {i < processSteps.length - 1 && (
-                <div className="hidden md:block absolute top-12 left-full w-full h-[2px] bg-gray-100 -z-10" />
+                <div className="hidden lg:block absolute top-12 left-full w-full h-[2px] bg-gray-100 -z-10" />
               )}
               <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-xl shadow-black/5 relative z-10">
                 <div className="w-12 h-12 bg-[#1A1A1A] text-white rounded-2xl flex items-center justify-center font-black mb-6">
@@ -428,7 +428,7 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {testimonials.length > 0 ? (
                 testimonials.map((t, i) => (
                   <motion.div 
