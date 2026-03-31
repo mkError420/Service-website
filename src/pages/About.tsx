@@ -133,7 +133,7 @@ export default function About() {
       </div>
 
       {/* Team Section */}
-      <div className="mb-32">
+      <div id="team" className="mb-32">
         <div className="text-center mb-20">
           <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight">Meet Our <span className="text-[#F27D26]">Experts.</span></h2>
           <p className="text-[#4A4A4A] max-w-2xl mx-auto">

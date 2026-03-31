@@ -47,7 +47,6 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
   const [services, setServices] = useState<Service[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [employees, setEmployees] = useState<UserProfile[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
@@ -104,6 +103,8 @@ export default function AdminDashboard() {
   const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
   const [deletingTestimonialId, setDeletingTestimonialId] = useState<string | null>(null);
   const [deletingTeamMemberId, setDeletingTeamMemberId] = useState<string | null>(null);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [assigningExpert, setAssigningExpert] = useState<TeamMember | null>(null);
   const [revenueFilter, setRevenueFilter] = useState<'7' | '30'>('7');
   
   // Settings State
@@ -171,13 +172,6 @@ export default function AdminDashboard() {
       handleFirestoreError(error, OperationType.GET, 'orders');
     });
 
-    const qEmployees = query(collection(db, 'users'), where('role', '==', 'employee'));
-    const unsubEmployees = onSnapshot(qEmployees, (snapshot) => {
-      setEmployees(snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile)));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'users/employees');
-    });
-
     const qAllUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
     const unsubAllUsers = onSnapshot(qAllUsers, (snapshot) => {
       const users = snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile));
@@ -236,7 +230,6 @@ export default function AdminDashboard() {
     return () => {
       unsubServices();
       unsubOrders();
-      unsubEmployees();
       unsubAllUsers();
       unsubContactMessages();
       unsubMessages();
@@ -527,10 +520,10 @@ export default function AdminDashboard() {
     e.preventDefault();
     setIsProcessing(true);
     try {
-      const selectedExpert = employees.find(emp => emp.uid === formData.expertId);
+      const selectedExpert = teamMembers.find(m => m.id === formData.expertId);
       const serviceData = {
         ...formData,
-        expertName: selectedExpert ? (selectedExpert.displayName || selectedExpert.email) : '',
+        expertName: selectedExpert ? selectedExpert.name : '',
         features: formData.features.split(',').map(f => f.trim()).filter(f => f !== '')
       };
 
@@ -620,16 +613,16 @@ export default function AdminDashboard() {
     }
   };
 
-  const assignOrder = async (orderId: string, employeeId: string) => {
+  const assignOrder = async (orderId: string, expertId: string) => {
     setIsProcessing(true);
     try {
-      const employee = employees.find(e => e.uid === employeeId);
+      const expert = teamMembers.find(m => m.id === expertId);
       await updateDoc(doc(db, 'orders', orderId), {
-        assignedExpertId: employeeId || null,
-        assignedExpertName: employee?.displayName || employee?.email || 'Unassigned',
+        assignedExpertId: expertId || null,
+        assignedExpertName: expert?.name || 'Unassigned',
         updatedAt: Timestamp.now()
       });
-      toast.success(employeeId ? `Assigned to ${employee?.displayName || employee?.email}` : "Expert unassigned");
+      toast.success(expertId ? `Assigned to ${expert?.name}` : "Expert unassigned");
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `orders/${orderId}`);
       toast.error("Failed to assign expert");
@@ -1352,8 +1345,8 @@ export default function AdminDashboard() {
                                 className="bg-gray-50 border-none rounded-xl text-[10px] font-bold uppercase tracking-widest px-4 py-2 focus:ring-2 focus:ring-[#F27D26] cursor-pointer w-full max-w-[140px]"
                               >
                                 <option value="">Unassigned</option>
-                                {employees.map(emp => (
-                                  <option key={emp.uid} value={emp.uid}>{emp.displayName || emp.email}</option>
+                                {teamMembers.map(m => (
+                                  <option key={m.id} value={m.id}>{m.name}</option>
                                 ))}
                               </select>
                             </td>
@@ -1812,14 +1805,24 @@ export default function AdminDashboard() {
                             <p className="text-xs text-[#F27D26] font-bold uppercase tracking-widest">{m.role}</p>
                           </div>
                         </div>
-                        <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleOpenTeamModal(m)} className="p-2 bg-gray-50 text-[#1A1A1A] rounded-lg hover:bg-[#F27D26] hover:text-white transition-all">
-                            <Edit2 size={14} />
-                          </button>
-                          <button onClick={() => handleDeleteTeamMember(m.id)} className="p-2 bg-gray-50 text-[#1A1A1A] rounded-lg hover:bg-red-500 hover:text-white transition-all">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                      <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => {
+                            setAssigningExpert(m);
+                            setIsAssignModalOpen(true);
+                          }} 
+                          className="p-2 bg-gray-50 text-[#1A1A1A] rounded-lg hover:bg-blue-500 hover:text-white transition-all"
+                          title="Assign to Order"
+                        >
+                          <Briefcase size={14} />
+                        </button>
+                        <button onClick={() => handleOpenTeamModal(m)} className="p-2 bg-gray-50 text-[#1A1A1A] rounded-lg hover:bg-[#F27D26] hover:text-white transition-all">
+                          <Edit2 size={14} />
+                        </button>
+                        <button onClick={() => handleDeleteTeamMember(m.id)} className="p-2 bg-gray-50 text-[#1A1A1A] rounded-lg hover:bg-red-500 hover:text-white transition-all">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                       </div>
                       <p className="text-sm text-[#4A4A4A] leading-relaxed line-clamp-3 mb-6">{m.bio}</p>
                       <div className="flex flex-wrap gap-2">
@@ -2554,6 +2557,81 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
+      {/* Assign Expert to Order Modal */}
+      <AnimatePresence>
+        {isAssignModalOpen && assigningExpert && (
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-2xl rounded-[40px] p-10 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className="text-2xl font-black tracking-tight">Assign {assigningExpert.name}</h2>
+                  <p className="text-sm text-[#9E9E9E] font-medium">Select an order to assign this expert to.</p>
+                </div>
+                <button onClick={() => setIsAssignModalOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="flex-grow overflow-y-auto pr-2 space-y-4">
+                {orders.filter(o => o.status !== 'cancelled' && o.status !== 'completed').length === 0 ? (
+                  <div className="text-center py-10">
+                    <p className="text-gray-400 font-medium">No active orders available for assignment.</p>
+                  </div>
+                ) : (
+                  orders
+                    .filter(o => o.status !== 'cancelled' && o.status !== 'completed')
+                    .map((order) => (
+                      <button
+                        key={order.id}
+                        onClick={() => {
+                          assignOrder(order.id, assigningExpert.id);
+                          setIsAssignModalOpen(false);
+                        }}
+                        className="w-full bg-gray-50 p-6 rounded-3xl border border-transparent hover:border-[#F27D26] hover:bg-white transition-all text-left group"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-black text-[#1A1A1A] group-hover:text-[#F27D26] transition-colors">{order.serviceTitle}</h4>
+                            <p className="text-xs text-[#9E9E9E] font-bold mt-1">ID: {order.id}</p>
+                            <div className="flex items-center mt-3 space-x-3">
+                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                order.status === 'paid' ? 'bg-blue-100 text-blue-600' :
+                                order.status === 'in-progress' ? 'bg-orange-100 text-orange-600' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {order.status}
+                              </span>
+                              <span className="text-xs font-bold text-[#1A1A1A]">${order.price}</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest">Currently Assigned</p>
+                            <p className="text-xs font-black text-[#1A1A1A] mt-1">{order.assignedExpertName || 'None'}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                )}
+              </div>
+
+              <div className="pt-8 mt-auto">
+                <button 
+                  onClick={() => setIsAssignModalOpen(false)}
+                  className="w-full px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Global Processing Overlay */}
       <AnimatePresence>
         {isProcessing && !isModalOpen && !selectedOrder && !deletingServiceId && !isSeedModalOpen && !isClearInventoryModalOpen && (
@@ -2669,9 +2747,9 @@ export default function AdminDashboard() {
                       onChange={(e) => setFormData({ ...formData, expertId: e.target.value })}
                     >
                       <option value="">No Default Expert</option>
-                      {employees.map(emp => (
-                        <option key={emp.uid} value={emp.uid}>
-                          {emp.displayName || emp.email}
+                      {teamMembers.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
                         </option>
                       ))}
                     </select>

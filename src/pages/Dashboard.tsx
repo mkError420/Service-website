@@ -302,12 +302,16 @@ export default function Dashboard() {
                         </td>
                         <td className="px-10 py-8">
                           {order.assignedExpertName ? (
-                            <div className="flex items-center space-x-2">
-                              <div className="w-6 h-6 bg-[#F27D26]/10 rounded-full flex items-center justify-center">
-                                <UserIcon size={12} className="text-[#F27D26]" />
+                            <Link 
+                              to="/about#team"
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center space-x-2 group/expert"
+                            >
+                              <div className="w-6 h-6 bg-[#F27D26]/10 rounded-full flex items-center justify-center group-hover/expert:bg-[#F27D26] transition-colors">
+                                <UserIcon size={12} className="text-[#F27D26] group-hover/expert:text-white transition-colors" />
                               </div>
-                              <span className="text-sm font-bold text-[#4A4A4A]">{order.assignedExpertName}</span>
-                            </div>
+                              <span className="text-sm font-bold text-[#4A4A4A] group-hover/expert:text-[#F27D26] transition-colors">{order.assignedExpertName}</span>
+                            </Link>
                           ) : (
                             <span className="text-xs font-medium text-[#9E9E9E]">Assigning...</span>
                           )}
@@ -655,7 +659,16 @@ export default function Dashboard() {
                             <UserIcon size={18} className="text-[#F27D26]" />
                             <span className="text-sm font-bold">Assigned Expert</span>
                           </div>
-                          <span className="text-sm font-medium text-[#4A4A4A]">{selectedOrder.assignedExpertName || 'Pending Assignment'}</span>
+                          {selectedOrder.assignedExpertName ? (
+                            <Link 
+                              to="/about#team"
+                              className="text-sm font-bold text-[#F27D26] hover:underline"
+                            >
+                              {selectedOrder.assignedExpertName}
+                            </Link>
+                          ) : (
+                            <span className="text-sm font-medium text-[#9E9E9E]">Pending Assignment</span>
+                          )}
                         </div>
                       </div>
                     </div>
