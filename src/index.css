@@ -33,15 +33,14 @@
   }
   .embla__container {
     display: flex;
+    margin-left: -2rem;
     backface-visibility: hidden;
     will-change: transform;
-    touch-action: pan-y pinch-zoom;
   }
   .embla__slide {
     flex: 0 0 100%;
     min-width: 0;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 2rem;
   }
   @media (min-width: 768px) {
     .embla__slide {

@@ -45,8 +45,7 @@ export default function Home() {
       loop: true, 
       align: 'start',
       slidesToScroll: 1,
-      dragFree: true,
-      containScroll: false
+      containScroll: 'trimSnaps'
     }, 
     [Autoplay({ delay: 4000, stopOnInteraction: false })]
   );
