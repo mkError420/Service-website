@@ -6,6 +6,7 @@ import { Service, Category, Testimonial, Settings as PlatformSettings } from '..
 import ServiceCard from '../components/ServiceCard';
 import { motion, AnimatePresence } from 'motion/react';
 import useEmblaCarousel from 'embla-carousel-react';
+import AutoScroll from 'embla-carousel-auto-scroll';
 import * as LucideIcons from 'lucide-react';
 import { 
   ArrowRight, 
@@ -41,11 +42,12 @@ export default function Home() {
 
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { 
-      loop: false, 
+      loop: true, 
       align: 'start',
       slidesToScroll: 1,
       containScroll: 'trimSnaps'
-    }
+    },
+    [AutoScroll({ speed: 1, stopOnInteraction: false, stopOnMouseEnter: true })]
   );
 
   useEffect(() => {
@@ -397,88 +399,36 @@ export default function Home() {
             </p>
           </div>
 
-          {testimonials.length > 3 ? (
-            <div className="embla" ref={emblaRef}>
-              <div className="embla__container">
-                {testimonials.map((t) => (
-                  <div key={t.id} className="embla__slide py-4">
-                    <div className="bg-white p-10 rounded-[40px] shadow-xl shadow-black/5 border border-gray-100 h-full flex flex-col select-none">
-                      <div className="flex items-center space-x-4 mb-8">
-                        <img 
-                          src={t.avatar} 
-                          alt={t.name} 
-                          className="w-14 h-14 rounded-2xl object-cover pointer-events-none" 
-                          referrerPolicy="no-referrer" 
-                        />
-                        <div>
-                          <h4 className="font-bold text-[#1A1A1A]">{t.name}</h4>
-                          <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">{t.role}</p>
-                        </div>
+          <div className="embla" ref={emblaRef}>
+            <div className="embla__container">
+              {(testimonials.length > 0 ? testimonials : [
+                { id: 'f1', name: 'Sarah Johnson', role: 'CEO, TechFlow', content: 'ServiceHub Pro transformed our digital presence. Their attention to detail and technical expertise is unmatched.', avatar: 'https://i.pravatar.cc/150?u=sarah', rating: 5 },
+                { id: 'f2', name: 'Michael Chen', role: 'Founder, CreativePulse', content: 'The video editing team is incredible. They captured our brand voice perfectly and delivered ahead of schedule.', avatar: 'https://i.pravatar.cc/150?u=michael', rating: 5 },
+                { id: 'f3', name: 'Emma Davis', role: 'Marketing Director, GlobalScale', content: 'Our conversion rates tripled after we switched to their MERN stack solutions. Truly a game-changer.', avatar: 'https://i.pravatar.cc/150?u=emma', rating: 5 },
+              ]).map((t) => (
+                <div key={t.id} className="embla__slide py-4">
+                  <div className="bg-white p-10 rounded-[40px] shadow-xl shadow-black/5 border border-gray-100 h-full flex flex-col select-none">
+                    <div className="flex items-center space-x-4 mb-8">
+                      <img 
+                        src={t.avatar} 
+                        alt={t.name} 
+                        className="w-14 h-14 rounded-2xl object-cover pointer-events-none" 
+                        referrerPolicy="no-referrer" 
+                      />
+                      <div>
+                        <h4 className="font-bold text-[#1A1A1A]">{t.name}</h4>
+                        <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">{t.role}</p>
                       </div>
-                      <p className="text-[#4A4A4A] leading-relaxed italic flex-grow">"{t.content}"</p>
-                      <div className="flex mt-6 text-[#F27D26]">
-                        {[...Array(t.rating)].map((_, star) => <Star key={star} size={14} fill="currentColor" />)}
-                      </div>
+                    </div>
+                    <p className="text-[#4A4A4A] leading-relaxed italic flex-grow">"{t.content}"</p>
+                    <div className="flex mt-6 text-[#F27D26]">
+                      {[...Array(t.rating)].map((_, star) => <Star key={star} size={14} fill="currentColor" />)}
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {testimonials.length > 0 ? (
-                testimonials.map((t, i) => (
-                  <motion.div 
-                    key={t.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                    className="bg-white p-10 rounded-[40px] shadow-xl shadow-black/5 border border-gray-100 h-full flex flex-col"
-                  >
-                    <div className="flex items-center space-x-4 mb-8">
-                      <img src={t.avatar} alt={t.name} className="w-14 h-14 rounded-2xl object-cover" referrerPolicy="no-referrer" />
-                      <div>
-                        <h4 className="font-bold text-[#1A1A1A]">{t.name}</h4>
-                        <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">{t.role}</p>
-                      </div>
-                    </div>
-                    <p className="text-[#4A4A4A] leading-relaxed italic flex-grow">"{t.content}"</p>
-                    <div className="flex mt-6 text-[#F27D26]">
-                      {[...Array(t.rating)].map((_, star) => <Star key={star} size={14} fill="currentColor" />)}
-                    </div>
-                  </motion.div>
-                ))
-              ) : (
-                [
-                  { name: 'Sarah Johnson', role: 'CEO, TechFlow', content: 'ServiceHub Pro transformed our digital presence. Their attention to detail and technical expertise is unmatched.', avatar: 'https://i.pravatar.cc/150?u=sarah', rating: 5 },
-                  { name: 'Michael Chen', role: 'Founder, CreativePulse', content: 'The video editing team is incredible. They captured our brand voice perfectly and delivered ahead of schedule.', avatar: 'https://i.pravatar.cc/150?u=michael', rating: 5 },
-                  { name: 'Emma Davis', role: 'Marketing Director, GlobalScale', content: 'Our conversion rates tripled after we switched to their MERN stack solutions. Truly a game-changer.', avatar: 'https://i.pravatar.cc/150?u=emma', rating: 5 },
-                ].map((t, i) => (
-                  <motion.div 
-                    key={i}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                    className="bg-white p-10 rounded-[40px] shadow-xl shadow-black/5 border border-gray-100 h-full flex flex-col"
-                  >
-                    <div className="flex items-center space-x-4 mb-8">
-                      <img src={t.avatar} alt={t.name} className="w-14 h-14 rounded-2xl object-cover" referrerPolicy="no-referrer" />
-                      <div>
-                        <h4 className="font-bold text-[#1A1A1A]">{t.name}</h4>
-                        <p className="text-xs text-[#9E9E9E] font-bold uppercase tracking-widest">{t.role}</p>
-                      </div>
-                    </div>
-                    <p className="text-[#4A4A4A] leading-relaxed italic flex-grow">"{t.content}"</p>
-                    <div className="flex mt-6 text-[#F27D26]">
-                      {[...Array(t.rating)].map((_, star) => <Star key={star} size={14} fill="currentColor" />)}
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          )}
+          </div>
         </div>
       </section>
 

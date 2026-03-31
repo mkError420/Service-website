@@ -26,21 +26,24 @@
   }
   .embla__container {
     display: flex;
-    gap: 2rem;
+    margin-left: -2rem;
+    backface-visibility: hidden;
+    will-change: transform;
   }
   .embla__slide {
     flex: 0 0 100%;
     min-width: 0;
+    padding-left: 2rem;
     position: relative;
   }
   @media (min-width: 768px) {
     .embla__slide {
-      flex: 0 0 calc((100% - 2rem) / 2);
+      flex: 0 0 50%;
     }
   }
   @media (min-width: 1024px) {
     .embla__slide {
-      flex: 0 0 calc((100% - 4rem) / 3);
+      flex: 0 0 33.3333%;
     }
   }
 }
