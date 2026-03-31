@@ -88,89 +88,131 @@ export default function Home() {
   return (
     <div className="space-y-32 pb-20">
       {/* Hero Section */}
-      <section className="relative pt-20 pb-32 overflow-hidden">
+      <section className="relative pt-32 pb-20 overflow-hidden bg-white">
+        {/* Background Decorative Elements */}
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-gray-50/50 -z-10" />
+        <div className="absolute top-20 right-20 w-64 h-64 bg-[#F27D26]/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 left-20 w-96 h-96 bg-gray-100 rounded-full blur-3xl" />
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+            {/* Left Content */}
             <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:col-span-7"
             >
-              <div className="inline-flex items-center space-x-2 bg-[#F27D26]/10 text-[#F27D26] px-4 py-2 rounded-full mb-8">
-                <Zap size={16} fill="currentColor" />
-                <span className="text-xs font-bold uppercase tracking-widest">Premium Digital Solutions</span>
+              <div className="flex items-center space-x-3 mb-8">
+                <div className="h-px w-8 bg-[#F27D26]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F27D26]">
+                  Premier Digital Agency
+                </span>
               </div>
-              <h1 className="text-6xl md:text-8xl font-black leading-[0.9] tracking-tighter mb-8">
-                Build Your <br />
-                <span className="text-[#F27D26]">Digital</span> Empire<span className="text-[#F27D26]">.</span>
+              
+              <h1 className="text-7xl md:text-8xl lg:text-[110px] font-black leading-[0.85] tracking-[-0.04em] mb-10 text-[#1A1A1A]">
+                Elevate <br />
+                <span className="text-gray-300">Your</span> Brand<span className="text-[#F27D26]">.</span>
               </h1>
-              <p className="text-xl text-[#4A4A4A] mb-12 max-w-lg leading-relaxed">
-                Expert services for modern brands. From high-performance web apps to cinematic video editing, we bring your vision to life.
-              </p>
-              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6">
-                <Link 
-                  to="/services" 
-                  className="bg-[#1A1A1A] text-white px-10 py-5 rounded-2xl text-lg font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 flex items-center justify-center group"
-                >
-                  Explore Services
-                  <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" />
-                </Link>
-                <div className="flex items-center space-x-4 px-6">
-                  <div className="flex -space-x-3">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
-                        <img src={`https://i.pravatar.cc/100?u=${i}`} alt="User" referrerPolicy="no-referrer" />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-sm">
-                    <div className="flex items-center text-[#F27D26]">
-                      <Star size={14} fill="currentColor" />
-                      <Star size={14} fill="currentColor" />
-                      <Star size={14} fill="currentColor" />
-                      <Star size={14} fill="currentColor" />
-                      <Star size={14} fill="currentColor" />
+              
+              <div className="max-w-lg">
+                <p className="text-lg text-[#4A4A4A] mb-12 leading-relaxed font-medium">
+                  We provide All digital solutions, including web & App, with modern UI/UX 
+                  design, and creative digital content. Our team helps businesses build high-performance websites, improve online visibility, and create engaging user experiences that convert visitors into customers.
+                </p>
+                
+                <div className="flex flex-wrap gap-6">
+                  <Link 
+                    to="/services" 
+                    className="bg-[#1A1A1A] text-white px-10 py-5 rounded-full text-sm font-black uppercase tracking-widest hover:bg-[#F27D26] transition-all flex items-center group"
+                  >
+                    Get Started
+                    <ArrowRight className="ml-3 group-hover:translate-x-2 transition-transform" size={18} />
+                  </Link>
+                  <button className="flex items-center space-x-4 group">
+                    <div className="w-14 h-14 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-[#F27D26] transition-colors">
+                      <Play size={18} className="text-[#1A1A1A] group-hover:text-[#F27D26] fill-current" />
                     </div>
-                    <p className="font-bold text-[#1A1A1A]">500+ Happy Clients</p>
-                  </div>
+                    <span className="text-sm font-bold uppercase tracking-widest">Watch Showreel</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Trust Indicators */}
+              <div className="mt-20 pt-12 border-t border-gray-100 flex flex-wrap gap-12">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Success Rate</p>
+                  <p className="text-3xl font-black text-[#1A1A1A]">99.8%</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Active Projects</p>
+                  <p className="text-3xl font-black text-[#1A1A1A]">45+</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Global Clients</p>
+                  <p className="text-3xl font-black text-[#1A1A1A]">200+</p>
                 </div>
               </div>
             </motion.div>
 
+            {/* Right Visual Composition */}
             <motion.div 
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1, delay: 0.2 }}
-              className="relative"
+              transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:col-span-5 relative"
             >
-              <div className="relative z-10 rounded-[40px] overflow-hidden shadow-2xl shadow-black/20 aspect-[4/5] bg-gray-100">
+              <div className="relative aspect-[4/5] rounded-[40px] overflow-hidden shadow-2xl">
                 <img 
-                  src="https://images.unsplash.com/photo-1551434678-e076c223a692?q=80&w=2070&auto=format&fit=crop" 
-                  alt="Team working" 
+                  src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=2072&auto=format&fit=crop" 
+                  alt="Modern Software Development" 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-10 left-10 right-10">
-                  <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-3xl">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-white font-bold">Project Delivery</span>
-                      <span className="text-[#F27D26] font-bold">99%</span>
-                    </div>
-                    <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: '99%' }}
-                        transition={{ duration: 2, delay: 1 }}
-                        className="h-full bg-[#F27D26]"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-tr from-[#1A1A1A]/40 via-transparent to-transparent" />
               </div>
-              {/* Decorative elements */}
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#F27D26]/10 rounded-full blur-3xl" />
-              <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-[#1A1A1A]/5 rounded-full blur-3xl" />
+
+              {/* Floating UI Elements */}
+              <motion.div 
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -top-8 -left-8 bg-white p-6 rounded-3xl shadow-2xl border border-gray-100 max-w-[200px]"
+              >
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="w-10 h-10 bg-[#F27D26]/10 rounded-xl flex items-center justify-center">
+                    <TrendingUp size={20} className="text-[#F27D26]" />
+                  </div>
+                  <span className="text-xs font-bold">Performance</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full w-[85%] bg-[#F27D26]" />
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">+24% Growth</p>
+                </div>
+              </motion.div>
+
+              <motion.div 
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                className="absolute -bottom-8 -right-8 bg-[#1A1A1A] p-6 rounded-3xl shadow-2xl text-white max-w-[220px]"
+              >
+                <div className="flex -space-x-3 mb-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="w-8 h-8 rounded-full border-2 border-[#1A1A1A] overflow-hidden">
+                      <img src={`https://i.pravatar.cc/100?u=${i + 10}`} alt="User" referrerPolicy="no-referrer" />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs font-bold leading-tight">Join 500+ professionals building with us.</p>
+              </motion.div>
+
+              {/* Vertical Rail Text */}
+              <div className="absolute -right-12 top-1/2 -translate-y-1/2 hidden xl:block">
+                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-gray-300 rotate-90 origin-center whitespace-nowrap">
+                  ESTABLISHED MMXXIV — GLOBAL REACH
+                </p>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -326,7 +368,7 @@ export default function Home() {
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-6 pt-12">
                 <div className="bg-[#F27D26] p-1 rounded-[32px]">
-                  <img src="https://custom-images.strikinglycdn.com/res/hrscywv4p/image/upload/c_limit,fl_lossy,h_9000,w_1200,f_auto,q_auto/405230/567571_198506.jpeg" className="rounded-[30px] w-full aspect-square object-cover" alt="Team collaboration" referrerPolicy="no-referrer" />
+                  <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2070&auto=format&fit=crop" className="rounded-[30px] w-full aspect-square object-cover" alt="Tech Team Collaboration" referrerPolicy="no-referrer" />
                 </div>
                 <div className="bg-gray-100 p-8 rounded-[32px] text-center">
                   <h4 className="text-4xl font-black text-[#1A1A1A]">100%</h4>
@@ -339,7 +381,7 @@ export default function Home() {
                   <p className="text-sm text-gray-400 font-medium">Support</p>
                 </div>
                 <div className="bg-gray-100 p-1 rounded-[32px]">
-                  <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070&auto=format&fit=crop" className="rounded-[30px] w-full aspect-square object-cover" alt="Expert support" referrerPolicy="no-referrer" />
+                  <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=2070&auto=format&fit=crop" className="rounded-[30px] w-full aspect-square object-cover" alt="IT Support Specialists" referrerPolicy="no-referrer" />
                 </div>
               </div>
             </div>
