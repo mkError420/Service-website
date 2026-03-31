@@ -88,7 +88,11 @@ export interface ContactMessage {
 export interface Settings {
   platformName: string;
   supportEmail: string;
+  supportPhone?: string;
+  officeAddress?: string;
+  workingHours?: string;
   maintenanceMode: boolean;
+  showreelUrl?: string;
   updatedAt?: Timestamp;
 }
 

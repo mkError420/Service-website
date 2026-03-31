@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc, Timestamp, where, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, setDoc, doc, deleteDoc, Timestamp, where, getDocs, writeBatch } from 'firebase/firestore';
 import { Service, Order, UserProfile, ContactMessage, Message, Category, Settings as PlatformSettings, Testimonial, TeamMember } from '../types';
 import { sendEmail } from '../services/emailService';
 import { seedServices } from '../lib/seedData';
@@ -113,7 +113,11 @@ export default function AdminDashboard() {
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
     platformName: 'ExpertHire',
     supportEmail: 'support@experthire.com',
-    maintenanceMode: false
+    supportPhone: '+880 1854-718767',
+    officeAddress: '124/3,Palashbari,gaibandha',
+    workingHours: '24/7 Support',
+    maintenanceMode: false,
+    showreelUrl: ''
   });
   
   // Form State
@@ -693,21 +697,10 @@ export default function AdminDashboard() {
     setIsProcessing(true);
     try {
       const settingsRef = doc(db, 'settings', 'config');
-      await updateDoc(settingsRef, {
+      await setDoc(settingsRef, {
         ...platformSettings,
         updatedAt: Timestamp.now()
-      }).catch(async (error) => {
-        // If document doesn't exist, create it
-        if (error.code === 'not-found') {
-          const { setDoc } = await import('firebase/firestore');
-          await setDoc(settingsRef, {
-            ...platformSettings,
-            updatedAt: Timestamp.now()
-          });
-        } else {
-          throw error;
-        }
-      });
+      }, { merge: true });
       toast.success("Platform configuration saved");
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'settings/config');
@@ -1918,6 +1911,44 @@ export default function AdminDashboard() {
                       onChange={(e) => setPlatformSettings({ ...platformSettings, supportEmail: e.target.value })}
                       className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 font-bold focus:ring-2 focus:ring-[#F27D26] transition-all" 
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Support Phone</label>
+                    <input 
+                      type="text" 
+                      value={platformSettings.supportPhone || ''} 
+                      onChange={(e) => setPlatformSettings({ ...platformSettings, supportPhone: e.target.value })}
+                      className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 font-bold focus:ring-2 focus:ring-[#F27D26] transition-all" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Office Address</label>
+                    <input 
+                      type="text" 
+                      value={platformSettings.officeAddress || ''} 
+                      onChange={(e) => setPlatformSettings({ ...platformSettings, officeAddress: e.target.value })}
+                      className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 font-bold focus:ring-2 focus:ring-[#F27D26] transition-all" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Working Hours</label>
+                    <input 
+                      type="text" 
+                      value={platformSettings.workingHours || ''} 
+                      onChange={(e) => setPlatformSettings({ ...platformSettings, workingHours: e.target.value })}
+                      className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 font-bold focus:ring-2 focus:ring-[#F27D26] transition-all" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">YouTube Showreel URL</label>
+                    <input 
+                      type="url" 
+                      value={platformSettings.showreelUrl || ''} 
+                      onChange={(e) => setPlatformSettings({ ...platformSettings, showreelUrl: e.target.value })}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 font-bold focus:ring-2 focus:ring-[#F27D26] transition-all" 
+                    />
+                    <p className="text-[10px] text-[#9E9E9E] font-medium italic">This video will appear on the Home page "Watch Showreel" button.</p>
                   </div>
                   <div className="flex items-center justify-between p-6 bg-gray-50 rounded-3xl">
                     <div>

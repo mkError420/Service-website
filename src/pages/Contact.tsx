@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, doc, onSnapshot } from 'firebase/firestore';
+import { Settings as PlatformSettings } from '../types';
 
 export default function Contact() {
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -13,6 +15,15 @@ export default function Contact() {
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
+      if (doc.exists()) {
+        setSettings(doc.data() as PlatformSettings);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,10 +47,10 @@ export default function Contact() {
   };
 
   const contactInfo = [
-    { icon: Mail, label: 'Email', value: 'mk.rabbani.cse@gmail.com', description: 'Our support team is here to help.' },
-    { icon: Phone, label: 'Phone', value: '+880 1854-718767', description: 'Sat-thu from 9am to 6pm.' },
-    { icon: MapPin, label: 'Office', value: '124/3,Palashbari,gaibandha', description: 'Visit our office.' },
-    { icon: Clock, label: 'Working Hours', value: '24/7 Support', description: 'Always available for our clients.' }
+    { icon: Mail, label: 'Email', value: settings?.supportEmail || 'mk.rabbani.cse@gmail.com', description: 'Our support team is here to help.' },
+    { icon: Phone, label: 'Phone', value: settings?.supportPhone || '+880 1854-718767', description: 'Sat-thu from 9am to 6pm.' },
+    { icon: MapPin, label: 'Office', value: settings?.officeAddress || '124/3,Palashbari,gaibandha', description: 'Visit our office.' },
+    { icon: Clock, label: 'Working Hours', value: settings?.workingHours || '24/7 Support', description: 'Always available for our clients.' }
   ];
 
   return (

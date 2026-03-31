@@ -39,6 +39,7 @@ export default function Home() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [showShowreel, setShowShowreel] = useState(false);
 
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { 
@@ -119,8 +120,43 @@ export default function Home() {
     { q: 'What is your pricing structure?', a: 'We offer both fixed-price packages for standard services and custom quotes for complex projects. All pricing is transparent with no hidden fees.' },
   ];
 
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
   return (
     <div className="space-y-32 pb-20">
+      {/* Showreel Modal */}
+      <AnimatePresence>
+        {showShowreel && settings?.showreelUrl && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative w-full max-w-5xl aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <button 
+                onClick={() => setShowShowreel(false)}
+                className="absolute top-6 right-6 z-10 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all"
+              >
+                <LucideIcons.X size={24} />
+              </button>
+              <iframe
+                src={`https://www.youtube.com/embed/${getYouTubeId(settings.showreelUrl)}?autoplay=1`}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              ></iframe>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 overflow-hidden bg-white">
         {/* Background Decorative Elements */}
@@ -163,7 +199,10 @@ export default function Home() {
                     Get Started
                     <ArrowRight className="ml-3 group-hover:translate-x-2 transition-transform" size={18} />
                   </Link>
-                  <button className="flex items-center space-x-4 group">
+                  <button 
+                    onClick={() => setShowShowreel(true)}
+                    className="flex items-center space-x-4 group"
+                  >
                     <div className="w-14 h-14 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-[#F27D26] transition-colors">
                       <Play size={18} className="text-[#1A1A1A] group-hover:text-[#F27D26] fill-current" />
                     </div>
