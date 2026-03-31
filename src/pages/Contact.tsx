@@ -36,9 +36,9 @@ export default function Contact() {
   };
 
   const contactInfo = [
-    { icon: Mail, label: 'Email', value: 'support@serviceshub.pro', description: 'Our support team is here to help.' },
-    { icon: Phone, label: 'Phone', value: '+1 (555) 123-4567', description: 'Mon-Fri from 9am to 6pm.' },
-    { icon: MapPin, label: 'Office', value: '123 Digital Avenue, NY', description: 'Visit our creative studio.' },
+    { icon: Mail, label: 'Email', value: 'mk.rabbani.cse@gmail.com', description: 'Our support team is here to help.' },
+    { icon: Phone, label: 'Phone', value: '+880 1854-718767', description: 'Sat-thu from 9am to 6pm.' },
+    { icon: MapPin, label: 'Office', value: '124/3,Palashbari,gaibandha', description: 'Visit our office.' },
     { icon: Clock, label: 'Working Hours', value: '24/7 Support', description: 'Always available for our clients.' }
   ];
 

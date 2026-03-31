@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Target, Users, Award, Zap, Linkedin, Twitter } from 'lucide-react';
 import { db } from '../firebase';
@@ -202,13 +203,15 @@ export default function About() {
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#F27D26] rounded-full blur-[120px]" />
         </div>
         <h2 className="text-4xl md:text-6xl font-black mb-8 tracking-tight relative z-10">Ready to start your <br /> next big project?</h2>
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-[#F27D26] text-white px-12 py-5 rounded-full text-xl font-bold hover:bg-white hover:text-[#1A1A1A] transition-all relative z-10 shadow-2xl shadow-[#F27D26]/20"
-        >
-          Let's Talk
-        </motion.button>
+        <Link to="/contact" className="relative z-10">
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-[#F27D26] text-white px-12 py-5 rounded-full text-xl font-bold hover:bg-white hover:text-[#1A1A1A] transition-all shadow-2xl shadow-[#F27D26]/20"
+          >
+            Let's Talk
+          </motion.button>
+        </Link>
       </div>
     </div>
   );
