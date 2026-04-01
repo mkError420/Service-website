@@ -216,7 +216,7 @@ service cloud.firestore {
     }
 
     function isValidNewsletterSubscription(data) {
-      return data.email is string && isValidEmail(data.email) &&
+      return data.email is string && data.email.size() > 3 &&
              data.createdAt is timestamp;
     }
 

@@ -119,12 +119,20 @@ export default function Home() {
     setIsSubscribing(true);
     try {
       // 1. Store in Firestore
-      await addDoc(collection(db, 'newsletter_subscriptions'), {
-        email,
-        createdAt: Timestamp.now()
-      });
+      console.log('Attempting to store in Firestore:', email);
+      try {
+        await addDoc(collection(db, 'newsletter_subscriptions'), {
+          email,
+          createdAt: Timestamp.now()
+        });
+        console.log('Successfully stored in Firestore');
+      } catch (fsError: any) {
+        console.error('Firestore error details:', fsError);
+        handleFirestoreError(fsError, OperationType.CREATE, 'newsletter_subscriptions');
+      }
 
       // 2. Notify Admin via API
+      console.log('Attempting to notify admin via API');
       const response = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -132,14 +140,25 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to notify admin');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API error details:', errorData);
+        throw new Error(errorData.error || 'Failed to notify admin');
       }
+      console.log('Successfully notified admin');
 
       toast.success('Successfully subscribed! Admin has been notified.');
       setEmail('');
-    } catch (error) {
-      console.error('Subscription error:', error);
-      toast.error('Failed to subscribe. Please try again.');
+    } catch (error: any) {
+      console.error('Subscription error catch block:', error);
+      // If it's a JSON error from handleFirestoreError, it might be hard to read
+      let message = 'Failed to subscribe. Please try again.';
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed.error) message = parsed.error;
+      } catch (e) {
+        if (error.message) message = error.message;
+      }
+      toast.error(message);
     } finally {
       setIsSubscribing(false);
     }
