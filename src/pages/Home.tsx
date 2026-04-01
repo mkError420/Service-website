@@ -140,7 +140,14 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        let errorData: any = {};
+        const responseText = await response.text();
+        try {
+          errorData = JSON.parse(responseText);
+        } catch (e) {
+          console.error('API response is not JSON:', responseText);
+          errorData = { error: `HTTP ${response.status}: ${responseText.slice(0, 100)}` };
+        }
         console.error('API error details:', errorData);
         throw new Error(errorData.error || 'Failed to notify admin');
       }
