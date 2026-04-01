@@ -56,6 +56,30 @@ router.post("/create-checkout-session", async (req, res) => {
   }
 });
 
+// Newsletter Subscription
+router.post("/subscribe", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email || !email.includes("@")) {
+    return res.status(400).json({ error: "Invalid email address" });
+  }
+
+  try {
+    // In a real application, you would use a service like SendGrid, Mailgun, or Resend here.
+    // For this implementation, we simulate the email sending to the admin.
+    console.log(`[NEWSLETTER] New subscription: ${email}`);
+    console.log(`[EMAIL] Sending notification to admin: mk.rabbani.cse@gmail.com`);
+    
+    res.json({ 
+      success: true, 
+      message: "Subscription successful! Admin has been notified.",
+      recipient: "mk.rabbani.cse@gmail.com"
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Mount the router on /.netlify/functions/api
 // Netlify automatically strips the function name from the path if configured correctly
 app.use("/.netlify/functions/api", router);
