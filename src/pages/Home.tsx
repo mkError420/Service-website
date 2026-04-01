@@ -180,7 +180,7 @@ export default function Home() {
                 </span>
               </div>
               
-              <h1 className="text-7xl md:text-8xl lg:text-[110px] font-black leading-[0.85] tracking-[-0.04em] mb-10 text-[#1A1A1A]">
+              <h1 className="font-display text-7xl md:text-8xl lg:text-[110px] font-black leading-[0.85] tracking-[-0.05em] mb-10 text-[#1A1A1A]">
                 Elevate <br />
                 <span className="text-gray-300">Your</span> Brand<span className="text-[#F27D26]">.</span>
               </h1>
@@ -293,9 +293,9 @@ export default function Home() {
 
       {/* Categories Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-20">
-          <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight">Our Expertise<span className="text-[#F27D26]">.</span></h2>
-          <p className="text-[#4A4A4A] max-w-2xl mx-auto">
+        <div className="text-center mb-24">
+          <h2 className="font-display text-5xl md:text-7xl font-black mb-8 tracking-[-0.05em] leading-[0.9]">Our Expertise<span className="text-[#F27D26]">.</span></h2>
+          <p className="text-[#4A4A4A] max-w-2xl mx-auto text-xl font-medium opacity-60">
             We specialize in high-impact digital services that help your business stand out in a crowded marketplace.
           </p>
         </div>
@@ -323,21 +323,21 @@ export default function Home() {
       </section>
 
       {/* Featured Services */}
-      <section className="bg-[#1A1A1A] py-32 text-white">
+      <section className="bg-[#1A1A1A] py-40 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-20">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-24">
             <div>
-              <h2 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">Featured <br />Solutions<span className="text-[#F27D26]">.</span></h2>
-              <p className="text-gray-400 max-w-md">
+              <h2 className="font-display text-5xl md:text-7xl font-black mb-8 tracking-[-0.05em] leading-[0.9]">Featured <br />Solutions<span className="text-[#F27D26]">.</span></h2>
+              <p className="text-gray-400 max-w-md text-lg font-medium opacity-60">
                 Hand-picked services that are currently trending and delivering massive value to our clients.
               </p>
             </div>
-            <Link to="/services" className="mt-8 md:mt-0 text-[#F27D26] font-bold flex items-center hover:underline group">
-              All Services <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" />
+            <Link to="/services" className="mt-8 md:mt-0 text-[#F27D26] font-black text-xs uppercase tracking-[0.3em] flex items-center hover:underline group">
+              All Services <ArrowRight className="ml-3 group-hover:translate-x-2 transition-transform" />
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
             {featuredServices.length > 0 ? (
               featuredServices.map((service, i) => (
                 <div key={service.id} className="text-[#1A1A1A]">

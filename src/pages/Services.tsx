@@ -95,9 +95,11 @@ export default function Services() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Header */}
-      <div className="mb-16 text-center">
-        <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">All Services<span className="text-[#F27D26]">.</span></h1>
-        <p className="text-[#4A4A4A] max-w-2xl mx-auto text-lg">
+      <div className="mb-24 text-center">
+        <h1 className="font-display text-6xl md:text-8xl font-black mb-8 tracking-[-0.05em] leading-[0.9]">
+          All Services<span className="text-[#F27D26]">.</span>
+        </h1>
+        <p className="text-[#4A4A4A] max-w-2xl mx-auto text-xl font-medium opacity-60">
           Browse our curated selection of high-end digital services designed to help you succeed in the digital age.
         </p>
       </div>
@@ -333,16 +335,16 @@ export default function Services() {
 
       {/* Results Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className="bg-gray-100 rounded-[40px] h-[500px] animate-pulse" />
+            <div key={i} className="bg-gray-100 rounded-[3rem] h-[500px] animate-pulse" />
           ))}
         </div>
       ) : filteredServices.length > 0 ? (
         <>
           <div className={viewMode === 'grid' 
-            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10" 
-            : "flex flex-col gap-6"
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12" 
+            : "flex flex-col gap-10"
           }>
             <AnimatePresence mode="popLayout">
               {paginatedServices.map((service, i) => (
