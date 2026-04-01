@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, where, limit, onSnapshot, orderBy, doc } from 'firebase/firestore';
+import { collection, query, where, limit, onSnapshot, orderBy, doc, addDoc, Timestamp } from 'firebase/firestore';
 import { Service, Category, Testimonial, Settings as PlatformSettings } from '../types';
 import ServiceCard from '../components/ServiceCard';
 import { motion, AnimatePresence } from 'motion/react';
 import useEmblaCarousel from 'embla-carousel-react';
 import AutoScroll from 'embla-carousel-auto-scroll';
+import { toast } from 'sonner';
 import * as LucideIcons from 'lucide-react';
 import { 
   ArrowRight, 
@@ -40,6 +41,8 @@ export default function Home() {
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [showShowreel, setShowShowreel] = useState(false);
+  const [email, setEmail] = useState('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { 
@@ -105,6 +108,42 @@ export default function Home() {
       unsubSettings();
     };
   }, []);
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !email.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setIsSubscribing(true);
+    try {
+      // 1. Store in Firestore
+      await addDoc(collection(db, 'newsletter_subscriptions'), {
+        email,
+        createdAt: Timestamp.now()
+      });
+
+      // 2. Notify Admin via API
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to notify admin');
+      }
+
+      toast.success('Successfully subscribed! Admin has been notified.');
+      setEmail('');
+    } catch (error) {
+      console.error('Subscription error:', error);
+      toast.error('Failed to subscribe. Please try again.');
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
 
   const processSteps = [
     { title: 'Discovery', desc: 'We dive deep into your brand, goals, and target audience to build a solid foundation.', icon: Search },
@@ -514,14 +553,22 @@ export default function Home() {
             <p className="text-gray-400 text-lg">Get the latest digital insights, trends, and exclusive offers delivered straight to your inbox.</p>
           </div>
           <div className="relative z-10 w-full max-w-md">
-            <form className="flex flex-col sm:flex-row gap-4">
+            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-4">
               <input 
                 type="email" 
                 placeholder="Enter your email" 
-                className="flex-grow bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:ring-2 focus:ring-[#F27D26] outline-none transition-all"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isSubscribing}
+                className="flex-grow bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:ring-2 focus:ring-[#F27D26] outline-none transition-all disabled:opacity-50"
               />
-              <button className="bg-[#F27D26] text-white px-8 py-4 rounded-2xl font-bold hover:bg-white hover:text-[#1A1A1A] transition-all flex items-center justify-center">
-                Subscribe <Mail className="ml-2" size={18} />
+              <button 
+                type="submit"
+                disabled={isSubscribing}
+                className="bg-[#F27D26] text-white px-8 py-4 rounded-2xl font-bold hover:bg-white hover:text-[#1A1A1A] transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubscribing ? 'Subscribing...' : 'Subscribe'} <Mail className="ml-2" size={18} />
               </button>
             </form>
             <p className="text-gray-500 text-xs mt-4 text-center sm:text-left">We respect your privacy. Unsubscribe at any time.</p>

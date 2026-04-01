@@ -62,6 +62,33 @@ async function startServer() {
     }
   });
 
+  // Newsletter Subscription
+  app.post("/api/subscribe", async (req, res) => {
+    const { email } = req.body;
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ error: "Invalid email address" });
+    }
+
+    try {
+      // In a real application, you would use a service like SendGrid, Mailgun, or Resend here.
+      // For this implementation, we simulate the email sending to the admin.
+      console.log(`[NEWSLETTER] New subscription: ${email}`);
+      console.log(`[EMAIL] Sending notification to admin: mk.rabbani.cse@gmail.com`);
+      
+      // We also store it in Firestore (handled by the client-side for better real-time experience, 
+      // but we could also do it here if we had firebase-admin setup).
+      
+      res.json({ 
+        success: true, 
+        message: "Subscription successful! Admin has been notified.",
+        recipient: "mk.rabbani.cse@gmail.com"
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

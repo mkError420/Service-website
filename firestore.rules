@@ -82,6 +82,12 @@ service cloud.firestore {
     //   - count: string (optional)
     //   - createdAt: timestamp (required)
     //
+    // Collection: newsletter_subscriptions
+    // Document ID: subscriptionId
+    // Fields:
+    //   - email: string (required)
+    //   - createdAt: timestamp (required)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -209,6 +215,11 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    function isValidNewsletterSubscription(data) {
+      return data.email is string && isValidEmail(data.email) &&
+             data.createdAt is timestamp;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -275,6 +286,13 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isAdmin() && isValidTeamMember(request.resource.data);
       allow delete: if isAdmin();
+    }
+
+    // Newsletter rules
+    match /newsletter_subscriptions/{subscriptionId} {
+      allow read: if isAdmin();
+      allow create: if isValidNewsletterSubscription(request.resource.data);
+      allow update, delete: if isAdmin();
     }
 
     // Default deny

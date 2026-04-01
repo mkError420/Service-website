@@ -159,6 +159,17 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "role", "bio"]
+    },
+    "NewsletterSubscription": {
+      "title": "NewsletterSubscription",
+      "description": "User email for newsletter subscription",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
     }
   },
   "firestore": {
@@ -171,6 +182,7 @@
     "/categories/{categoryId}": { "schema": "Category", "description": "Service categories" },
     "/settings/config": { "schema": "Settings", "description": "Global platform configuration" },
     "/testimonials/{testimonialId}": { "schema": "Testimonial", "description": "Client testimonials" },
-    "/team/{memberId}": { "schema": "TeamMember", "description": "Team members" }
+    "/team/{memberId}": { "schema": "TeamMember", "description": "Team members" },
+    "/newsletter_subscriptions/{subscriptionId}": { "schema": "NewsletterSubscription", "description": "Newsletter subscriptions" }
   }
 }
