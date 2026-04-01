@@ -20,6 +20,12 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Logging middleware
+  app.use((req, res, next) => {
+    console.log(`[SERVER] ${req.method} ${req.url}`);
+    next();
+  });
+
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
@@ -65,8 +71,10 @@ async function startServer() {
   // Newsletter Subscription
   app.post("/api/subscribe", async (req, res) => {
     const { email } = req.body;
+    console.log(`[SERVER] Received subscription request for: ${email}`);
 
     if (!email || !email.includes("@")) {
+      console.log(`[SERVER] Invalid email: ${email}`);
       return res.status(400).json({ error: "Invalid email address" });
     }
 

@@ -14,6 +14,12 @@ const stripe = process.env.STRIPE_SECRET_KEY
 
 app.use(express.json());
 
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`[NETLIFY] ${req.method} ${req.url}`);
+  next();
+});
+
 // API Routes
 router.get("/health", (req, res) => {
   res.json({ status: "ok", environment: "netlify" });
@@ -57,16 +63,15 @@ router.post("/create-checkout-session", async (req, res) => {
 });
 
 // Newsletter Subscription
-router.post("/subscribe", async (req, res) => {
+const subscribeHandler = async (req: any, res: any) => {
   const { email } = req.body;
+  console.log(`[NETLIFY] Received subscription request for: ${email}`);
 
   if (!email || !email.includes("@")) {
     return res.status(400).json({ error: "Invalid email address" });
   }
 
   try {
-    // In a real application, you would use a service like SendGrid, Mailgun, or Resend here.
-    // For this implementation, we simulate the email sending to the admin.
     console.log(`[NEWSLETTER] New subscription: ${email}`);
     console.log(`[EMAIL] Sending notification to admin: mk.rabbani.cse@gmail.com`);
     
@@ -78,10 +83,14 @@ router.post("/subscribe", async (req, res) => {
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
-});
+};
 
-// Mount the router on /.netlify/functions/api
-// Netlify automatically strips the function name from the path if configured correctly
+router.post("/subscribe", subscribeHandler);
+router.post("/api/subscribe", subscribeHandler); // Fallback for different routing
+
+// Mount the router on multiple possible paths to be safe
 app.use("/.netlify/functions/api", router);
+app.use("/api", router);
+app.use("/", router);
 
 export const handler = serverless(app);
