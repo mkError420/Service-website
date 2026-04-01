@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { db, auth, signInWithGoogle } from '../firebase';
-import { doc, getDoc, addDoc, collection, Timestamp, serverTimestamp } from 'firebase/firestore';
-import { Service, Review } from '../types';
+import { db, auth, signInWithGoogle, handleFirestoreError, OperationType } from '../firebase';
+import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { Service } from '../types';
 import { 
   Star, 
   Clock, 
@@ -18,7 +18,9 @@ import {
   User,
   Mail,
   Phone,
-  FileText
+  FileText,
+  AlertCircle,
+  Home
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -27,58 +29,6 @@ import { loadStripe } from '@stripe/stripe-js';
 const stripePromise = (import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY 
   ? loadStripe((import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY) 
   : null;
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId: string | undefined;
-    email: string | null | undefined;
-    emailVerified: boolean | undefined;
-    isAnonymous: boolean | undefined;
-    tenantId: string | null | undefined;
-    providerInfo: {
-      providerId: string;
-      displayName: string | null;
-      email: string | null;
-      photoUrl: string | null;
-    }[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  toast.error("Booking failed. Please try again.");
-  throw new Error(JSON.stringify(errInfo));
-}
 
 export default function ServiceDetail() {
   const { id } = useParams();
@@ -231,9 +181,36 @@ export default function ServiceDetail() {
 
   if (!service) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-32 text-center">
-        <h2 className="text-4xl font-black mb-6">Service Not Found</h2>
-        <Link to="/services" className="text-[#F27D26] font-bold hover:underline">Back to Services</Link>
+      <div className="min-h-[80vh] flex items-center justify-center px-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full bg-white rounded-[40px] shadow-2xl shadow-black/5 p-12 text-center border border-gray-100"
+        >
+          <div className="w-24 h-24 bg-red-50 rounded-3xl flex items-center justify-center mx-auto mb-8">
+            <AlertCircle size={48} className="text-red-500" />
+          </div>
+          <h2 className="text-4xl font-black text-[#1A1A1A] mb-4 tracking-tight">Service Not Found</h2>
+          <p className="text-[#9E9E9E] font-medium mb-10 leading-relaxed">
+            The service you're looking for might have been removed or the link is incorrect.
+          </p>
+          <div className="flex flex-col space-y-4">
+            <Link 
+              to="/services" 
+              className="w-full bg-[#1A1A1A] text-white py-5 rounded-2xl font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 flex items-center justify-center group"
+            >
+              Explore Services
+              <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link 
+              to="/" 
+              className="w-full bg-gray-50 text-[#1A1A1A] py-5 rounded-2xl font-bold hover:bg-gray-100 transition-all flex items-center justify-center"
+            >
+              <Home size={20} className="mr-2" />
+              Back to Home
+            </Link>
+          </div>
+        </motion.div>
       </div>
     );
   }

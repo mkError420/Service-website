@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy, Timestamp, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { Order, UserProfile, ContactMessage } from '../types';
 import { 
@@ -46,14 +46,27 @@ export default function Dashboard() {
   useEffect(() => {
     if (!auth.currentUser) return;
 
+    let ordersLoaded = false;
+    let messagesLoaded = false;
+
+    const checkLoading = () => {
+      if (ordersLoaded && messagesLoaded) {
+        setLoading(false);
+      }
+    };
+
     // Fetch Profile
     const fetchProfile = async () => {
-      const docRef = doc(db, 'users', auth.currentUser!.uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const profileData = docSnap.data() as UserProfile;
-        setProfile(profileData);
-        setEditName(profileData.displayName || '');
+      try {
+        const docRef = doc(db, 'users', auth.currentUser!.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const profileData = docSnap.data() as UserProfile;
+          setProfile(profileData);
+          setEditName(profileData.displayName || '');
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
       }
     };
     fetchProfile();
@@ -68,6 +81,12 @@ export default function Dashboard() {
     const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
       const ordersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
       setOrders(ordersData);
+      ordersLoaded = true;
+      checkLoading();
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'orders');
+      ordersLoaded = true;
+      checkLoading();
     });
 
     // Fetch Contact Messages
@@ -80,7 +99,12 @@ export default function Dashboard() {
     const unsubscribeMessages = onSnapshot(qMessages, (snapshot) => {
       const messagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactMessage));
       setContactMessages(messagesData);
-      setLoading(false);
+      messagesLoaded = true;
+      checkLoading();
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'contact_messages');
+      messagesLoaded = true;
+      checkLoading();
     });
 
     return () => {

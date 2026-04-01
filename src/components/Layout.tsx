@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { auth, signInWithGoogle, logout, db } from '../firebase';
+import { auth, signInWithGoogle, logout, db, handleFirestoreError, OperationType } from '../firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { UserProfile, Settings as PlatformSettings } from '../types';
@@ -53,6 +53,8 @@ export default function Layout({ children }: LayoutProps) {
       if (doc.exists()) {
         setSettings(doc.data() as PlatformSettings);
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/config');
     });
 
     const handleScroll = () => {

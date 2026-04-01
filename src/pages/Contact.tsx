@@ -21,6 +21,8 @@ export default function Contact() {
       if (doc.exists()) {
         setSettings(doc.data() as PlatformSettings);
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/config');
     });
     return () => unsub();
   }, []);

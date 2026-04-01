@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Target, Users, Award, Zap, Linkedin, Twitter } from 'lucide-react';
-import { db } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, doc } from 'firebase/firestore';
 import { TeamMember, Settings as PlatformSettings } from '../types';
 
@@ -13,12 +13,16 @@ export default function About() {
   useEffect(() => {
     const unsubTeam = onSnapshot(collection(db, 'team'), (snapshot) => {
       setTeamMembers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'team');
     });
 
     const unsubSettings = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
       if (doc.exists()) {
         setSettings(doc.data() as PlatformSettings);
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/config');
     });
 
     return () => {

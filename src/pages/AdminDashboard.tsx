@@ -176,6 +176,7 @@ export default function AdminDashboard() {
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'orders');
+      setLoading(false);
     });
 
     const qAllUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'));

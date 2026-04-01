@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, limit, onSnapshot, orderBy, doc } from 'firebase/firestore';
 import { Service, Category, Testimonial, Settings as PlatformSettings } from '../types';
 import ServiceCard from '../components/ServiceCard';
@@ -60,21 +60,21 @@ export default function Home() {
     const unsubFeatured = onSnapshot(qFeatured, (snapshot) => {
       setFeaturedServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
     }, (error) => {
-      console.error("Firestore Error (featured):", error);
+      handleFirestoreError(error, OperationType.GET, 'services/featured');
     });
 
     const qCategories = query(collection(db, 'categories'), orderBy('name', 'asc'));
     const unsubCategories = onSnapshot(qCategories, (snapshot) => {
       setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
     }, (error) => {
-      console.error("Firestore Error (categories):", error);
+      handleFirestoreError(error, OperationType.GET, 'categories');
     });
 
     const qAllServices = query(collection(db, 'services'), where('active', '==', true));
     const unsubAllServices = onSnapshot(qAllServices, (snapshot) => {
       setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
     }, (error) => {
-      console.error("Firestore Error (all services):", error);
+      handleFirestoreError(error, OperationType.GET, 'services/all');
     });
 
     const qTestimonials = query(collection(db, 'testimonials'), where('featured', '==', true), limit(10));
@@ -83,7 +83,7 @@ export default function Home() {
       console.log("Testimonials fetched:", fetchedTestimonials.length);
       setTestimonials(fetchedTestimonials);
     }, (error) => {
-      console.error("Firestore Error (testimonials):", error);
+      handleFirestoreError(error, OperationType.GET, 'testimonials');
     });
 
     const unsubSettings = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
@@ -94,7 +94,7 @@ export default function Home() {
         console.warn("Settings document 'config' not found.");
       }
     }, (error) => {
-      console.error("Firestore Error (settings):", error);
+      handleFirestoreError(error, OperationType.GET, 'settings/config');
     });
 
     return () => {

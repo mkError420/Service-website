@@ -65,6 +65,8 @@ export default function Chat() {
     const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
       const o = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
       setOrders(o);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'orders');
     });
 
     // Fetch all messages involving the user
@@ -89,7 +91,7 @@ export default function Chat() {
       sentMsgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
       updateMessages();
     }, (error) => {
-      console.error("Error fetching sent messages:", error);
+      handleFirestoreError(error, OperationType.GET, 'messages/sent');
     });
 
     const qReceiver = query(
@@ -101,7 +103,7 @@ export default function Chat() {
       receivedMsgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
       updateMessages();
     }, (error) => {
-      console.error("Error fetching received messages:", error);
+      handleFirestoreError(error, OperationType.GET, 'messages/received');
     });
 
     return () => {

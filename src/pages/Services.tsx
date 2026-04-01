@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { db } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 import { Service, Category } from '../types';
 import ServiceCard from '../components/ServiceCard';
@@ -30,14 +30,15 @@ export default function Services() {
       setServices(servicesData);
       setIsLoading(false);
     }, (error) => {
-      console.error("Firestore Error (services):", error);
+      handleFirestoreError(error, OperationType.GET, 'services');
+      setIsLoading(false);
     });
 
     const qCategories = query(collection(db, 'categories'), orderBy('name', 'asc'));
     const unsubCategories = onSnapshot(qCategories, (snapshot) => {
       setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
     }, (error) => {
-      console.error("Firestore Error (categories):", error);
+      handleFirestoreError(error, OperationType.GET, 'categories');
     });
 
     return () => {

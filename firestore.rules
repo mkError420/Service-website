@@ -243,7 +243,8 @@ service cloud.firestore {
     }
 
     match /contact_messages/{messageId} {
-      allow read, delete: if isAdmin();
+      allow read: if isAuthenticated() && (isOwner(resource.data.uid) || isAdmin());
+      allow delete: if isAdmin();
       allow update: if isAdmin() && isValidContactMessage(request.resource.data);
       allow create: if isValidContactMessage(request.resource.data);
     }
