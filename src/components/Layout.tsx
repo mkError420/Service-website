@@ -421,9 +421,9 @@ export default function Layout({ children }: LayoutProps) {
             <div className="border-t border-gray-100 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-[#9E9E9E]">
               <p>© 2026 {settings?.platformName || 'ServicesHub Pro'}. All rights reserved.</p>
               <div className="flex space-x-6 mt-4 md:mt-0">
-                <a href="#" className="hover:text-[#1A1A1A]">Twitter</a>
-                <a href="#" className="hover:text-[#1A1A1A]">LinkedIn</a>
-                <a href="#" className="hover:text-[#1A1A1A]">Instagram</a>
+                <a href="https://www.facebook.com/share/18Mt4vhGXz/" className="hover:text-[#1A1A1A]">Facebook</a>
+                <a href="https://www.linkedin.com/in/mk-rabbani-81343024b/" className="hover:text-[#1A1A1A]">LinkedIn</a>
+                <a href="https://github.com/mkError420" className="hover:text-[#1A1A1A]">GitHub</a>
               </div>
             </div>
           </div>
