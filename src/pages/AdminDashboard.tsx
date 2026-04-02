@@ -26,6 +26,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  ChevronLeft,
   ChevronRight,
   MoreVertical,
   Calendar,
@@ -96,6 +97,13 @@ export default function AdminDashboard() {
   const [serviceCategoryFilter, setServiceCategoryFilter] = useState('All');
   const [orderSearchTerm, setOrderSearchTerm] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('All');
+  const [orderPage, setOrderPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  const [servicePage, setServicePage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
+  const [teamPage, setTeamPage] = useState(1);
+  const [mailPage, setMailPage] = useState(1);
+  const [subscriberPage, setSubscriberPage] = useState(1);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [isSeeding, setIsSeeding] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1026,12 +1034,26 @@ export default function AdminDashboard() {
 
   const maxRevenue = Math.max(...revenueData.map(d => d.value), 1);
 
+  useEffect(() => {
+    setServicePage(1);
+  }, [serviceSearchTerm, serviceCategoryFilter]);
+
   const filteredServices = services.filter(service => {
     const matchesSearch = service.title.toLowerCase().includes(serviceSearchTerm.toLowerCase()) || 
                           service.description.toLowerCase().includes(serviceSearchTerm.toLowerCase());
     const matchesCategory = serviceCategoryFilter === 'All' || service.category === serviceCategoryFilter;
     return matchesSearch && matchesCategory;
   });
+
+  const totalServicePages = Math.ceil(filteredServices.length / ITEMS_PER_PAGE);
+  const paginatedServices = filteredServices.slice(
+    (servicePage - 1) * ITEMS_PER_PAGE,
+    servicePage * ITEMS_PER_PAGE
+  );
+
+  useEffect(() => {
+    setOrderPage(1);
+  }, [orderSearchTerm, orderStatusFilter]);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(orderSearchTerm.toLowerCase()) || 
@@ -1041,12 +1063,46 @@ export default function AdminDashboard() {
     return matchesSearch && matchesStatus;
   });
 
+  const totalOrderPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = filteredOrders.slice(
+    (orderPage - 1) * ITEMS_PER_PAGE,
+    orderPage * ITEMS_PER_PAGE
+  );
+
+  useEffect(() => {
+    setUserPage(1);
+  }, [userSearchTerm]);
+
   const filteredUsers = allUsers.filter(user => {
     const matchesSearch = (user.displayName || '').toLowerCase().includes(userSearchTerm.toLowerCase()) || 
                           (user.email || '').toLowerCase().includes(userSearchTerm.toLowerCase()) ||
                           user.uid.toLowerCase().includes(userSearchTerm.toLowerCase());
     return matchesSearch;
   });
+
+  const totalUserPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice(
+    (userPage - 1) * ITEMS_PER_PAGE,
+    userPage * ITEMS_PER_PAGE
+  );
+
+  const totalTeamPages = Math.ceil(teamMembers.length / ITEMS_PER_PAGE);
+  const paginatedTeam = teamMembers.slice(
+    (teamPage - 1) * ITEMS_PER_PAGE,
+    teamPage * ITEMS_PER_PAGE
+  );
+
+  const totalMailPages = Math.ceil(contactMessages.length / ITEMS_PER_PAGE);
+  const paginatedMail = contactMessages.slice(
+    (mailPage - 1) * ITEMS_PER_PAGE,
+    mailPage * ITEMS_PER_PAGE
+  );
+
+  const totalSubscriberPages = Math.ceil(newsletterSubscriptions.length / ITEMS_PER_PAGE);
+  const paginatedSubscribers = newsletterSubscriptions.slice(
+    (subscriberPage - 1) * ITEMS_PER_PAGE,
+    subscriberPage * ITEMS_PER_PAGE
+  );
 
   if (loading) return (
     <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
@@ -1406,38 +1462,81 @@ export default function AdminDashboard() {
               </div>
 
               {filteredServices.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                  {filteredServices.map((service) => (
-                    <div key={service.id} className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all group">
-                      <div className="relative h-40 rounded-2xl overflow-hidden mb-6">
-                        <img src={service.image || `https://picsum.photos/seed/${service.id}/800/600`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${service.active ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-                          {service.active ? 'Active' : 'Paused'}
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                    {paginatedServices.map((service) => (
+                      <div key={service.id} className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+                        <div className="relative h-40 rounded-2xl overflow-hidden mb-6">
+                          <img src={service.image || `https://picsum.photos/seed/${service.id}/800/600`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${service.active ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                            {service.active ? 'Active' : 'Paused'}
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-bold mb-1 truncate">{service.title}</h3>
+                        <p className="text-[#9E9E9E] text-[10px] font-bold uppercase tracking-widest mb-4">{service.category}</p>
+                        
+                        <div className="flex items-center justify-between pt-6 border-t border-gray-50">
+                          <span className="text-xl font-black text-[#1A1A1A]">${service.price}</span>
+                          <div className="flex space-x-2">
+                            <button 
+                              onClick={() => handleOpenModal(service)}
+                              className="p-3 bg-gray-50 text-[#1A1A1A] rounded-xl hover:bg-[#F27D26] hover:text-white transition-all"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button 
+                              onClick={() => setDeletingServiceId(service.id)}
+                              className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <h3 className="text-lg font-bold mb-1 truncate">{service.title}</h3>
-                      <p className="text-[#9E9E9E] text-[10px] font-bold uppercase tracking-widest mb-4">{service.category}</p>
-                      
-                      <div className="flex items-center justify-between pt-6 border-t border-gray-50">
-                        <span className="text-xl font-black text-[#1A1A1A]">${service.price}</span>
-                        <div className="flex space-x-2">
-                          <button 
-                            onClick={() => handleOpenModal(service)}
-                            className="p-3 bg-gray-50 text-[#1A1A1A] rounded-xl hover:bg-[#F27D26] hover:text-white transition-all"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button 
-                            onClick={() => setDeletingServiceId(service.id)}
-                            className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                    ))}
+                  </div>
+
+                  {totalServicePages > 1 && (
+                    <div className="mt-12 flex items-center justify-between bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm">
+                      <p className="text-xs font-bold text-[#9E9E9E] uppercase tracking-widest">
+                        Showing {(servicePage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(servicePage * ITEMS_PER_PAGE, filteredServices.length)} of {filteredServices.length} services
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setServicePage(prev => Math.max(1, prev - 1))}
+                          disabled={servicePage === 1}
+                          className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: totalServicePages }, (_, i) => i + 1).map(page => (
+                            <button
+                              key={page}
+                              onClick={() => setServicePage(page)}
+                              className={`w-8 h-8 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                                servicePage === page 
+                                  ? 'bg-[#F27D26] text-white shadow-lg shadow-[#F27D26]/20' 
+                                  : 'bg-white border border-gray-100 text-[#1A1A1A] hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
                         </div>
+
+                        <button
+                          onClick={() => setServicePage(prev => Math.min(totalServicePages, prev + 1))}
+                          disabled={servicePage === totalServicePages}
+                          className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               ) : (
                 <div className="bg-white rounded-[40px] p-20 text-center border border-gray-100 shadow-sm">
                   <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -1556,7 +1655,7 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
-                        {filteredOrders.map((order) => (
+                        {paginatedOrders.map((order) => (
                           <tr key={order.id} className="hover:bg-gray-50/30 transition-colors">
                             <td className="p-8">
                               <span className="font-mono text-xs font-bold text-[#1A1A1A]">#{order.id.slice(0, 8)}</span>
@@ -1630,6 +1729,47 @@ export default function AdminDashboard() {
                       </tbody>
                     </table>
                   </div>
+                  
+                  {totalOrderPages > 1 && (
+                    <div className="p-8 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+                      <p className="text-xs font-bold text-[#9E9E9E] uppercase tracking-widest">
+                        Showing {(orderPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(orderPage * ITEMS_PER_PAGE, filteredOrders.length)} of {filteredOrders.length} orders
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setOrderPage(prev => Math.max(1, prev - 1))}
+                          disabled={orderPage === 1}
+                          className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: totalOrderPages }, (_, i) => i + 1).map(page => (
+                            <button
+                              key={page}
+                              onClick={() => setOrderPage(page)}
+                              className={`w-8 h-8 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                                orderPage === page 
+                                  ? 'bg-[#F27D26] text-white shadow-lg shadow-[#F27D26]/20' 
+                                  : 'bg-white border border-gray-100 text-[#1A1A1A] hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => setOrderPage(prev => Math.min(totalOrderPages, prev + 1))}
+                          disabled={orderPage === totalOrderPages}
+                          className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-white rounded-[40px] p-20 text-center border border-gray-100 shadow-sm">
@@ -1669,7 +1809,7 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
-                        {filteredUsers.map((user) => (
+                        {paginatedUsers.map((user) => (
                           <tr key={user.uid} className="hover:bg-gray-50/30 transition-colors">
                             <td className="p-8">
                               <div className="flex items-center space-x-4">
@@ -1713,6 +1853,47 @@ export default function AdminDashboard() {
                       </tbody>
                     </table>
                   </div>
+
+                  {totalUserPages > 1 && (
+                    <div className="p-8 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+                      <p className="text-xs font-bold text-[#9E9E9E] uppercase tracking-widest">
+                        Showing {(userPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(userPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} users
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setUserPage(prev => Math.max(1, prev - 1))}
+                          disabled={userPage === 1}
+                          className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: totalUserPages }, (_, i) => i + 1).map(page => (
+                            <button
+                              key={page}
+                              onClick={() => setUserPage(page)}
+                              className={`w-8 h-8 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                                userPage === page 
+                                  ? 'bg-[#F27D26] text-white shadow-lg shadow-[#F27D26]/20' 
+                                  : 'bg-white border border-gray-100 text-[#1A1A1A] hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => setUserPage(prev => Math.min(totalUserPages, prev + 1))}
+                          disabled={userPage === totalUserPages}
+                          className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-white rounded-[40px] p-20 text-center border border-gray-100 shadow-sm">
@@ -1970,7 +2151,7 @@ export default function AdminDashboard() {
                           </td>
                         </tr>
                       ) : (
-                        contactMessages.map((msg) => (
+                        paginatedMail.map((msg) => (
                           <tr key={msg.id} className={`hover:bg-gray-50/50 transition-colors ${msg.status === 'new' ? 'bg-blue-50/30' : ''}`}>
                             <td className="px-10 py-8">
                               <p className="font-black text-[#1A1A1A]">{msg.name}</p>
@@ -2041,6 +2222,47 @@ export default function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+
+                {totalMailPages > 1 && (
+                  <div className="p-8 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+                    <p className="text-xs font-bold text-[#9E9E9E] uppercase tracking-widest">
+                      Showing {(mailPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(mailPage * ITEMS_PER_PAGE, contactMessages.length)} of {contactMessages.length} messages
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setMailPage(prev => Math.max(1, prev - 1))}
+                        disabled={mailPage === 1}
+                        className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      
+                      <div className="flex items-center space-x-1">
+                        {Array.from({ length: totalMailPages }, (_, i) => i + 1).map(page => (
+                          <button
+                            key={page}
+                            onClick={() => setMailPage(page)}
+                            className={`w-8 h-8 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                              mailPage === page 
+                                ? 'bg-[#F27D26] text-white shadow-lg shadow-[#F27D26]/20' 
+                                : 'bg-white border border-gray-100 text-[#1A1A1A] hover:bg-gray-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setMailPage(prev => Math.min(totalMailPages, prev + 1))}
+                        disabled={mailPage === totalMailPages}
+                        className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2083,7 +2305,7 @@ export default function AdminDashboard() {
                           </td>
                         </tr>
                       ) : (
-                        newsletterSubscriptions.map((sub) => (
+                        paginatedSubscribers.map((sub) => (
                           <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
                             <td className="px-10 py-8">
                               <div className="flex items-center space-x-4">
@@ -2116,6 +2338,47 @@ export default function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+
+                {totalSubscriberPages > 1 && (
+                  <div className="p-8 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+                    <p className="text-xs font-bold text-[#9E9E9E] uppercase tracking-widest">
+                      Showing {(subscriberPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(subscriberPage * ITEMS_PER_PAGE, newsletterSubscriptions.length)} of {newsletterSubscriptions.length} subscribers
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setSubscriberPage(prev => Math.max(1, prev - 1))}
+                        disabled={subscriberPage === 1}
+                        className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      
+                      <div className="flex items-center space-x-1">
+                        {Array.from({ length: totalSubscriberPages }, (_, i) => i + 1).map(page => (
+                          <button
+                            key={page}
+                            onClick={() => setSubscriberPage(page)}
+                            className={`w-8 h-8 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                              subscriberPage === page 
+                                ? 'bg-[#F27D26] text-white shadow-lg shadow-[#F27D26]/20' 
+                                : 'bg-white border border-gray-100 text-[#1A1A1A] hover:bg-gray-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setSubscriberPage(prev => Math.min(totalSubscriberPages, prev + 1))}
+                        disabled={subscriberPage === totalSubscriberPages}
+                        className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2181,7 +2444,7 @@ export default function AdminDashboard() {
                     <p className="text-[#9E9E9E]">Build your team and showcase your experts.</p>
                   </div>
                 ) : (
-                  teamMembers.map((m) => (
+                  paginatedTeam.map((m) => (
                     <div key={m.id} className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
                       <div className="flex justify-between items-start mb-6">
                         <div className="flex items-center space-x-4">
@@ -2224,6 +2487,47 @@ export default function AdminDashboard() {
                   ))
                 )}
               </div>
+
+              {totalTeamPages > 1 && (
+                <div className="mt-12 flex items-center justify-between bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm">
+                  <p className="text-xs font-bold text-[#9E9E9E] uppercase tracking-widest">
+                    Showing {(teamPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(teamPage * ITEMS_PER_PAGE, teamMembers.length)} of {teamMembers.length} experts
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setTeamPage(prev => Math.max(1, prev - 1))}
+                      disabled={teamPage === 1}
+                      className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: totalTeamPages }, (_, i) => i + 1).map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setTeamPage(page)}
+                          className={`w-8 h-8 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                            teamPage === page 
+                              ? 'bg-[#F27D26] text-white shadow-lg shadow-[#F27D26]/20' 
+                              : 'bg-white border border-gray-100 text-[#1A1A1A] hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setTeamPage(prev => Math.min(totalTeamPages, prev + 1))}
+                      disabled={teamPage === totalTeamPages}
+                      className="p-2 bg-white border border-gray-100 rounded-xl text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
