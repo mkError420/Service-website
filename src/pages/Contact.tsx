@@ -174,7 +174,7 @@ export default function Contact() {
                 ) : (
                   <>
                     <Send size={20} />
-                    <span>Send Message</span>
+                    <span>Send Mail</span>
                   </>
                 )}
               </motion.button>
