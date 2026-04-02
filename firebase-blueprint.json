@@ -170,6 +170,24 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "createdAt"]
+    },
+    "Offer": {
+      "title": "Offer",
+      "description": "Promotional offer with discount code",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "promoCode": { "type": "string" },
+        "discountPercentage": { "type": "number" },
+        "active": { "type": "boolean" },
+        "imageUrl": { "type": "string" },
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "promoCode", "discountPercentage", "active", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -183,6 +201,7 @@
     "/settings/config": { "schema": "Settings", "description": "Global platform configuration" },
     "/testimonials/{testimonialId}": { "schema": "Testimonial", "description": "Client testimonials" },
     "/team/{memberId}": { "schema": "TeamMember", "description": "Team members" },
-    "/newsletter_subscriptions/{subscriptionId}": { "schema": "NewsletterSubscription", "description": "Newsletter subscriptions" }
+    "/newsletter_subscriptions/{subscriptionId}": { "schema": "NewsletterSubscription", "description": "Newsletter subscriptions" },
+    "/offers/{offerId}": { "schema": "Offer", "description": "Promotional offers" }
   }
 }

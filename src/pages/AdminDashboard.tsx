@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, setDoc, doc, deleteDoc, Timestamp, where, getDocs, writeBatch } from 'firebase/firestore';
-import { Service, Order, UserProfile, ContactMessage, Message, Category, Settings as PlatformSettings, Testimonial, TeamMember, NewsletterSubscription } from '../types';
+import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, setDoc, doc, deleteDoc, Timestamp, where, getDocs, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { Service, Order, UserProfile, ContactMessage, Message, Category, Settings as PlatformSettings, Testimonial, TeamMember, NewsletterSubscription, Offer } from '../types';
 import { sendEmail } from '../services/emailService';
 import { seedServices } from '../lib/seedData';
 import { 
@@ -34,13 +34,16 @@ import {
   Tag,
   Layers,
   Send,
-  Paperclip
+  Paperclip,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
-type AdminTab = 'overview' | 'services' | 'categories' | 'orders' | 'users' | 'messages' | 'mail' | 'subscribers' | 'testimonials' | 'team' | 'settings';
+type AdminTab = 'overview' | 'services' | 'categories' | 'orders' | 'users' | 'messages' | 'mail' | 'subscribers' | 'testimonials' | 'team' | 'offers' | 'settings';
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
@@ -55,6 +58,7 @@ export default function AdminDashboard() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [newsletterSubscriptions, setNewsletterSubscriptions] = useState<NewsletterSubscription[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [chatMessage, setChatMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -100,12 +104,15 @@ export default function AdminDashboard() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isTestimonialModalOpen, setIsTestimonialModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
   const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
+  const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
   const [deletingTestimonialId, setDeletingTestimonialId] = useState<string | null>(null);
   const [deletingTeamMemberId, setDeletingTeamMemberId] = useState<string | null>(null);
   const [deletingSubscriberId, setDeletingSubscriberId] = useState<string | null>(null);
+  const [deletingOfferId, setDeletingOfferId] = useState<string | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assigningExpert, setAssigningExpert] = useState<TeamMember | null>(null);
   const [revenueFilter, setRevenueFilter] = useState<'7' | '30'>('7');
@@ -161,6 +168,16 @@ export default function AdminDashboard() {
       twitter: ''
     },
     active: true
+  });
+
+  const [offerFormData, setOfferFormData] = useState({
+    title: '',
+    description: '',
+    promoCode: '',
+    discountPercentage: 0,
+    active: true,
+    imageUrl: '',
+    expiryDate: ''
   });
 
   useEffect(() => {
@@ -243,6 +260,13 @@ export default function AdminDashboard() {
       handleFirestoreError(error, OperationType.GET, 'newsletter_subscriptions');
     });
 
+    const qOffers = query(collection(db, 'offers'), orderBy('createdAt', 'desc'));
+    const unsubOffers = onSnapshot(qOffers, (snapshot) => {
+      setOffers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'offers');
+    });
+
     return () => {
       unsubServices();
       unsubOrders();
@@ -254,6 +278,7 @@ export default function AdminDashboard() {
       unsubTestimonials();
       unsubTeam();
       unsubNewsletter();
+      unsubOffers();
     };
   }, []);
 
@@ -735,6 +760,80 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleOpenOfferModal = (offer: Offer | null = null) => {
+    if (offer) {
+      setEditingOffer(offer);
+      setOfferFormData({
+        title: offer.title,
+        description: offer.description,
+        promoCode: offer.promoCode,
+        discountPercentage: offer.discountPercentage,
+        active: offer.active,
+        imageUrl: offer.imageUrl || '',
+        expiryDate: offer.expiryDate ? offer.expiryDate.toDate().toISOString().split('T')[0] : ''
+      });
+    } else {
+      setEditingOffer(null);
+      setOfferFormData({
+        title: '',
+        description: '',
+        promoCode: '',
+        discountPercentage: 0,
+        active: true,
+        imageUrl: '',
+        expiryDate: ''
+      });
+    }
+    setIsOfferModalOpen(true);
+  };
+
+  const handleSaveOffer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    try {
+      const data: any = {
+        title: offerFormData.title,
+        description: offerFormData.description,
+        promoCode: offerFormData.promoCode.toUpperCase(),
+        discountPercentage: Number(offerFormData.discountPercentage),
+        active: offerFormData.active,
+        imageUrl: offerFormData.imageUrl,
+        expiryDate: offerFormData.expiryDate ? Timestamp.fromDate(new Date(offerFormData.expiryDate)) : null,
+        updatedAt: serverTimestamp()
+      };
+
+      if (editingOffer) {
+        await updateDoc(doc(db, 'offers', editingOffer.id), data);
+        toast.success('Offer updated successfully');
+      } else {
+        data.createdAt = serverTimestamp();
+        await addDoc(collection(db, 'offers'), data);
+        toast.success('Offer added successfully');
+      }
+      setIsOfferModalOpen(false);
+      setEditingOffer(null);
+    } catch (error) {
+      handleFirestoreError(error, editingOffer ? OperationType.UPDATE : OperationType.CREATE, 'offers');
+      toast.error('Failed to save offer');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteOffer = async (id: string) => {
+    setIsProcessing(true);
+    try {
+      await deleteDoc(doc(db, 'offers', id));
+      toast.success('Offer deleted successfully');
+      setDeletingOfferId(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `offers/${id}`);
+      toast.error('Failed to delete offer');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const updateMessageStatus = async (id: string, status: 'read' | 'replied') => {
     setIsProcessing(true);
     try {
@@ -866,6 +965,7 @@ export default function AdminDashboard() {
     { label: 'Total Services', value: services.length, icon: LayoutDashboard, color: '#F27D26' },
     { label: 'Total Users', value: allUsers.length, icon: Users, color: '#1A1A1A' },
     { label: 'Subscribers', value: newsletterSubscriptions.length, icon: Mail, color: '#F27D26' },
+    { label: 'Active Offers', value: offers.filter(o => o.active).length, icon: Tag, color: '#1A1A1A' },
   ];
 
   const revenueData = useMemo(() => {
@@ -932,6 +1032,88 @@ export default function AdminDashboard() {
     </div>
   );
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    const timestamp = new Date().toLocaleString();
+    
+    let title = '';
+    let headers: string[][] = [];
+    let data: any[][] = [];
+    let filename = '';
+
+    if (activeTab === 'categories') {
+      title = 'Service Categories Report';
+      filename = 'categories_report.pdf';
+      headers = [['ID', 'Name', 'Created At']];
+      data = categories.map(c => [
+        c.id,
+        c.name,
+        c.createdAt?.toDate().toLocaleString() || 'N/A'
+      ]);
+    } else if (activeTab === 'orders') {
+      title = 'Orders Report';
+      filename = 'orders_report.pdf';
+      headers = [['ID', 'Client', 'Service', 'Price', 'Status', 'Date']];
+      data = orders.map(o => [
+        o.id.slice(0, 8),
+        o.guestName || o.clientId,
+        o.serviceTitle,
+        `$${o.price}`,
+        o.status,
+        o.createdAt?.toDate().toLocaleString() || 'N/A'
+      ]);
+    } else if (activeTab === 'users') {
+      title = 'Platform Users Report';
+      filename = 'users_report.pdf';
+      headers = [['UID', 'Email', 'Name', 'Role', 'Joined']];
+      data = allUsers.map(u => [
+        u.uid.slice(0, 8),
+        u.email,
+        u.displayName || 'N/A',
+        u.role,
+        u.createdAt?.toDate().toLocaleString() || 'N/A'
+      ]);
+    } else if (activeTab === 'subscribers') {
+      title = 'Newsletter Subscribers Report';
+      filename = 'subscribers_report.pdf';
+      headers = [['ID', 'Email', 'Subscribed At']];
+      data = newsletterSubscriptions.map(s => [
+        s.id.slice(0, 8),
+        s.email,
+        s.createdAt?.toDate().toLocaleString() || 'N/A'
+      ]);
+    } else if (activeTab === 'team') {
+      title = 'Team Members Report';
+      filename = 'team_report.pdf';
+      headers = [['ID', 'Name', 'Role', 'Status']];
+      data = teamMembers.map(m => [
+        m.id.slice(0, 8),
+        m.name,
+        m.role,
+        m.active ? 'Active' : 'Inactive'
+      ]);
+    }
+
+    if (title) {
+      doc.setFontSize(20);
+      doc.text(title, 14, 22);
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Generated on: ${timestamp}`, 14, 30);
+      
+      autoTable(doc, {
+        startY: 35,
+        head: headers,
+        body: data,
+        theme: 'striped',
+        headStyles: { fillColor: [242, 125, 38] }, // #F27D26
+      });
+      
+      doc.save(filename);
+      toast.success(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} exported as PDF`);
+    }
+  };
+
   const sidebarItems = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'services', label: 'Services', icon: LayoutDashboard },
@@ -943,6 +1125,7 @@ export default function AdminDashboard() {
     { id: 'subscribers', label: 'Subscribers', icon: Users },
     { id: 'testimonials', label: 'Testimonials', icon: MessageSquare },
     { id: 'team', label: 'Team', icon: Users },
+    { id: 'offers', label: 'Offers', icon: Tag },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -1005,11 +1188,21 @@ export default function AdminDashboard() {
               {activeTab === 'subscribers' && 'Manage newsletter subscriptions and email list.'}
               {activeTab === 'testimonials' && 'Manage client feedback and social proof.'}
               {activeTab === 'team' && 'Manage your expert team and public profiles.'}
+              {activeTab === 'offers' && 'Manage promotional offers and discount codes.'}
               {activeTab === 'settings' && 'Configure platform defaults and system settings.'}
             </p>
           </div>
           
           <div className="flex items-center space-x-4">
+            {['categories', 'orders', 'users', 'subscribers', 'team'].includes(activeTab) && (
+              <button 
+                onClick={handleExportPDF}
+                className="bg-white text-[#1A1A1A] border border-gray-100 px-6 py-3 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all shadow-sm flex items-center"
+              >
+                <Download size={18} className="mr-2" />
+                Export PDF
+              </button>
+            )}
             {activeTab === 'services' && (
               <button 
                 onClick={() => handleOpenModal()}
@@ -1046,6 +1239,15 @@ export default function AdminDashboard() {
                 New Member
               </button>
             )}
+            {activeTab === 'offers' && (
+              <button 
+                onClick={() => handleOpenOfferModal()}
+                className="bg-[#1A1A1A] text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#F27D26] transition-all shadow-lg flex items-center"
+              >
+                <Plus size={18} className="mr-2" />
+                New Offer
+              </button>
+            )}
             <div className="flex items-center space-x-3 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
               <div className="w-10 h-10 rounded-xl bg-[#F27D26]/10 flex items-center justify-center">
                 <Users size={20} className="text-[#F27D26]" />
@@ -1063,7 +1265,7 @@ export default function AdminDashboard() {
           {activeTab === 'overview' && (
             <div className="space-y-12">
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                 {stats.map((stat, i) => (
                   <div key={i} className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-6">
@@ -1343,7 +1545,14 @@ export default function AdminDashboard() {
                             </td>
                             <td className="p-8">
                               <p className="text-sm font-bold text-[#1A1A1A]">{order.serviceTitle}</p>
-                              <p className="text-xs text-[#F27D26] font-black">${order.price}</p>
+                              <div className="flex items-center space-x-2">
+                                <p className="text-xs text-[#F27D26] font-black">${order.price}</p>
+                                {order.promoCode && (
+                                  <span className="text-[8px] font-black uppercase tracking-widest bg-green-50 text-green-600 px-1.5 py-0.5 rounded border border-green-100">
+                                    {order.promoCode}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="p-8">
                               <select 
@@ -1989,6 +2198,86 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {activeTab === 'offers' && (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {offers.length === 0 ? (
+                  <div className="col-span-full bg-white p-20 rounded-[40px] border border-gray-100 text-center">
+                    <Tag size={48} className="mx-auto text-gray-200 mb-6" />
+                    <h3 className="text-xl font-bold text-[#1A1A1A]">No offers yet</h3>
+                    <p className="text-[#9E9E9E] mt-2">Create your first promotional offer to attract more clients.</p>
+                    <button 
+                      onClick={() => handleOpenOfferModal()}
+                      className="mt-8 bg-[#F27D26] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#1A1A1A] transition-all"
+                    >
+                      Create Offer
+                    </button>
+                  </div>
+                ) : (
+                  offers.map((offer) => (
+                    <motion.div 
+                      key={offer.id}
+                      layout
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden"
+                    >
+                      <div className="flex justify-between items-start mb-6">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${offer.active ? 'bg-[#F27D26]/10 text-[#F27D26]' : 'bg-gray-100 text-gray-400'}`}>
+                          <Tag size={28} />
+                        </div>
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={() => handleOpenOfferModal(offer)}
+                            className="p-2 bg-gray-50 text-gray-400 hover:text-[#F27D26] hover:bg-[#F27D26]/10 rounded-xl transition-all"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button 
+                            onClick={() => setDeletingOfferId(offer.id)}
+                            className="p-2 bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-xl font-black text-[#1A1A1A]">{offer.title}</h3>
+                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${offer.active ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                              {offer.active ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                          <p className="text-sm text-[#4A4A4A] line-clamp-2">{offer.description}</p>
+                        </div>
+
+                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Promo Code</span>
+                            <span className="text-sm font-black text-[#F27D26]">{offer.promoCode}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#9E9E9E]">Discount</span>
+                            <span className="text-sm font-black text-[#1A1A1A]">{offer.discountPercentage}% OFF</span>
+                          </div>
+                        </div>
+
+                        {offer.expiryDate && (
+                          <div className="flex items-center text-[10px] font-bold text-[#9E9E9E] uppercase tracking-widest">
+                            <Calendar size={12} className="mr-2" />
+                            Expires: {offer.expiryDate.toDate().toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'settings' && (
             <div className="max-w-2xl space-y-8">
               <div className="bg-white p-10 rounded-[40px] border border-gray-100 shadow-sm">
@@ -2129,7 +2418,17 @@ export default function AdminDashboard() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] mb-1">Service</p>
                   <p className="text-xl font-black text-[#1A1A1A]">{selectedOrder.serviceTitle}</p>
-                  <p className="text-[#F27D26] font-black">${selectedOrder.price}</p>
+                  <div className="flex items-center space-x-3">
+                    <p className="text-[#F27D26] font-black text-2xl">${selectedOrder.price}</p>
+                    {selectedOrder.promoCode && (
+                      <div className="flex items-center space-x-2 bg-green-50 px-3 py-1 rounded-full border border-green-100">
+                        <Tag size={12} className="text-green-600" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-green-600">
+                          Code: {selectedOrder.promoCode} (-${selectedOrder.discountAmount})
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -2171,8 +2470,9 @@ export default function AdminDashboard() {
                 <div className="pt-8 border-t border-gray-100 flex gap-4">
                   <button 
                     onClick={() => {
+                      setSelectedChatId(selectedOrder.id);
+                      setActiveTab('messages');
                       setSelectedOrder(null);
-                      // In a real app, navigate to chat with this order context
                     }}
                     className="flex-grow bg-[#1A1A1A] text-white py-4 rounded-2xl font-bold hover:bg-[#F27D26] transition-all"
                   >
@@ -2428,6 +2728,41 @@ export default function AdminDashboard() {
                   className="flex-1 px-8 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
                 >
                   Remove
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Offer Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingOfferId && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={40} />
+              </div>
+              <h2 className="text-2xl font-black mb-4">Delete Offer?</h2>
+              <p className="text-[#4A4A4A] mb-10">This will permanently remove this promotional offer. Are you sure?</p>
+              
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setDeletingOfferId(null)}
+                  className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => handleDeleteOffer(deletingOfferId)}
+                  className="flex-1 px-8 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                >
+                  Delete
                 </button>
               </div>
             </motion.div>
@@ -2700,6 +3035,148 @@ export default function AdminDashboard() {
                     {isProcessing ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
                     ) : editingTeamMember ? 'Update Member' : 'Save Member'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Offer Modal */}
+      <AnimatePresence>
+        {isOfferModalOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-xl rounded-[40px] p-10 shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-black tracking-tight">
+                  {editingOffer ? 'Edit Offer' : 'New Offer'}
+                </h2>
+                <button onClick={() => setIsOfferModalOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveOffer} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Offer Title</label>
+                  <input 
+                    required
+                    type="text"
+                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                    value={offerFormData.title}
+                    onChange={(e) => setOfferFormData({...offerFormData, title: e.target.value})}
+                    placeholder="e.g. Summer Special Discount"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Description</label>
+                  <textarea 
+                    required
+                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium min-h-[100px] resize-none"
+                    value={offerFormData.description}
+                    onChange={(e) => setOfferFormData({...offerFormData, description: e.target.value})}
+                    placeholder="Describe the offer details..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Promo Code</label>
+                    <input 
+                      required
+                      type="text"
+                      className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                      value={offerFormData.promoCode}
+                      onChange={(e) => setOfferFormData({...offerFormData, promoCode: e.target.value.toUpperCase()})}
+                      placeholder="e.g. SUMMER20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Discount (%)</label>
+                    <input 
+                      required
+                      type="number"
+                      min="1"
+                      max="100"
+                      className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                      value={offerFormData.discountPercentage}
+                      onChange={(e) => setOfferFormData({...offerFormData, discountPercentage: Number(e.target.value)})}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Image URL (Optional)</label>
+                    <div className="flex space-x-4">
+                      <div className="flex-1">
+                        <input 
+                          type="url"
+                          className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                          value={offerFormData.imageUrl}
+                          onChange={(e) => setOfferFormData({...offerFormData, imageUrl: e.target.value})}
+                        />
+                      </div>
+                      {offerFormData.imageUrl && (
+                        <div className="w-14 h-14 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 flex-shrink-0">
+                          <img 
+                            src={offerFormData.imageUrl} 
+                            alt="Preview" 
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E] ml-4">Expiry Date (Optional)</label>
+                    <input 
+                      type="date"
+                      className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                      value={offerFormData.expiryDate}
+                      onChange={(e) => setOfferFormData({...offerFormData, expiryDate: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                  <input 
+                    type="checkbox"
+                    id="offer-active"
+                    checked={offerFormData.active}
+                    onChange={(e) => setOfferFormData({ ...offerFormData, active: e.target.checked })}
+                    className="w-5 h-5 rounded border-gray-300 text-[#F27D26] focus:ring-[#F27D26]"
+                  />
+                  <label htmlFor="offer-active" className="text-sm font-bold text-[#1A1A1A]">Active Offer</label>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => setIsOfferModalOpen(false)}
+                    className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isProcessing}
+                    className="flex-1 px-8 py-4 bg-[#F27D26] text-white rounded-2xl font-bold hover:bg-[#E06C15] transition-all shadow-lg shadow-[#F27D26]/20 disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {isProcessing ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                    ) : editingOffer ? 'Update Offer' : 'Save Offer'}
                   </button>
                 </div>
               </form>

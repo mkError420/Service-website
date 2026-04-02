@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db, auth, signInWithGoogle, handleFirestoreError, OperationType } from '../firebase';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { Service } from '../types';
+import { doc, getDoc, addDoc, collection, serverTimestamp, query, where, getDocs, limit } from 'firebase/firestore';
+import { Service, Offer } from '../types';
 import { 
   Star, 
   Clock, 
@@ -12,7 +12,6 @@ import {
   ArrowRight, 
   ChevronLeft,
   Zap,
-  CreditCard,
   Lock,
   X,
   User,
@@ -20,15 +19,12 @@ import {
   Phone,
   FileText,
   AlertCircle,
-  Home
+  Home,
+  Tag,
+  Check
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
-import { loadStripe } from '@stripe/stripe-js';
-
-const stripePromise = (import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY 
-  ? loadStripe((import.meta as any).env.VITE_STRIPE_PUBLISHABLE_KEY) 
-  : null;
 
 export default function ServiceDetail() {
   const { id } = useParams();
@@ -42,6 +38,10 @@ export default function ServiceDetail() {
     phone: '',
     projectDetails: ''
   });
+  const [promoCode, setPromoCode] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [appliedOffer, setAppliedOffer] = useState<Offer | null>(null);
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -67,17 +67,58 @@ export default function ServiceDetail() {
     fetchService();
   }, [id]);
 
+  const applyPromoCode = async () => {
+    if (!promoCode) return;
+    setIsApplyingPromo(true);
+    try {
+      const q = query(
+        collection(db, 'offers'),
+        where('promoCode', '==', promoCode.toUpperCase()),
+        where('active', '==', true),
+        limit(1)
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const offerData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Offer;
+        
+        if (offerData.expiryDate && offerData.expiryDate.toDate() < new Date()) {
+          toast.error('This promo code has expired');
+          setDiscount(0);
+          setAppliedOffer(null);
+          return;
+        }
+
+        setAppliedOffer(offerData);
+        setDiscount(offerData.discountPercentage);
+        toast.success(`Promo code applied! ${offerData.discountPercentage}% discount`);
+      } else {
+        toast.error('Invalid promo code');
+        setDiscount(0);
+        setAppliedOffer(null);
+      }
+    } catch (error) {
+      console.error('Error applying promo code:', error);
+      toast.error('Failed to apply promo code');
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
+
   const handleBooking = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
     if (!service) return;
 
     setBooking(true);
+    const finalPrice = service.price * (1 - discount / 100);
     const orderData: any = {
       clientId: auth.currentUser?.uid || 'guest',
       serviceId: service.id,
       serviceTitle: service.title,
-      price: service.price,
+      price: finalPrice,
+      originalPrice: service.price,
+      promoCode: appliedOffer?.promoCode || null,
+      discountAmount: service.price - finalPrice,
       status: 'pending',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -102,59 +143,18 @@ export default function ServiceDetail() {
     console.log("Attempting to create order with data:", orderData);
 
     try {
-      const docRef = await addDoc(collection(db, 'orders'), orderData);
+      await addDoc(collection(db, 'orders'), orderData);
       
-      // If Stripe is configured, redirect to checkout
-      if (stripePromise) {
-        const loadingToast = toast.loading("Redirecting to secure payment...");
-        
-        try {
-          const response = await fetch('/api/create-checkout-session', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              serviceName: service.title,
-              price: service.price,
-              orderId: docRef.id,
-              successUrl: `${window.location.origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-              cancelUrl: window.location.href,
-            }),
-          });
-
-          const session = await response.json();
-          
-          if (session.error) {
-            throw new Error(session.error);
-          }
-
-          const stripe = await stripePromise;
-          if (stripe) {
-            const { error } = await (stripe as any).redirectToCheckout({
-              sessionId: session.id,
-            });
-            if (error) throw error;
-          }
-          toast.dismiss(loadingToast);
-        } catch (stripeError: any) {
-          toast.dismiss(loadingToast);
-          toast.error(`Payment initialization failed: ${stripeError.message}`);
-          console.error("Stripe Error:", stripeError);
+      toast.success("Order created successfully! Our team will contact you soon.");
+      setShowBookingForm(false);
+      
+      setTimeout(() => {
+        if (auth.currentUser) {
+          navigate('/dashboard');
+        } else {
+          navigate('/');
         }
-      } else {
-        // Fallback for demo if Stripe is not configured
-        toast.success("Order created successfully! (Demo Mode)");
-        setShowBookingForm(false);
-        
-        setTimeout(() => {
-          if (auth.currentUser) {
-            navigate('/dashboard');
-          } else {
-            navigate('/');
-          }
-        }, 2000);
-      }
+      }, 2000);
 
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'orders');
@@ -346,11 +346,11 @@ export default function ServiceDetail() {
               <div className="space-y-6 pt-8 border-t border-gray-50">
                 <div className="flex items-center space-x-4">
                   <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-                    <CreditCard size={18} className="text-green-600" />
+                    <CheckCircle2 size={18} className="text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold">Secure Checkout</p>
-                    <p className="text-xs text-[#9E9E9E]">Powered by Stripe</p>
+                    <p className="text-sm font-bold">Verified Expert</p>
+                    <p className="text-xs text-[#9E9E9E]">Direct communication</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
@@ -393,13 +393,13 @@ export default function ServiceDetail() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white rounded-[40px] w-full max-w-2xl overflow-hidden shadow-2xl relative z-10"
+            className="bg-white rounded-[32px] md:rounded-[40px] w-[94%] sm:w-[85%] md:w-full md:max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative z-10 scrollbar-hide"
           >
-            <div className="p-8 md:p-12">
-              <div className="flex justify-between items-center mb-10">
+            <div className="p-6 sm:p-8 md:p-12">
+              <div className="flex justify-between items-center mb-8 md:mb-10">
                 <div>
-                  <h2 className="text-3xl font-black tracking-tight">Complete Your Booking</h2>
-                  <p className="text-[#9E9E9E] font-medium mt-1">No account required. We'll contact you via email.</p>
+                  <h2 className="text-2xl md:text-3xl font-black tracking-tight">Complete Your Booking</h2>
+                  <p className="text-[#9E9E9E] text-xs md:text-sm font-medium mt-1">No account required. We'll contact you via email.</p>
                 </div>
                 <button 
                   onClick={() => setShowBookingForm(false)}
@@ -409,75 +409,104 @@ export default function ServiceDetail() {
                 </button>
               </div>
 
-              <form onSubmit={handleBooking} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form onSubmit={handleBooking} className="space-y-5 md:space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Full Name</label>
+                    <label className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Full Name</label>
                     <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={20} />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={18} />
                       <input 
                         type="text" 
                         required
                         value={guestInfo.name}
                         onChange={(e) => setGuestInfo({...guestInfo, name: e.target.value})}
                         placeholder="John Doe"
-                        className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium"
+                        className="w-full bg-gray-50 border-none rounded-2xl py-3.5 md:py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium text-sm md:text-base"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Email Address</label>
+                    <label className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Email Address</label>
                     <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={20} />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={18} />
                       <input 
                         type="email" 
                         required
                         value={guestInfo.email}
                         onChange={(e) => setGuestInfo({...guestInfo, email: e.target.value})}
                         placeholder="john@example.com"
-                        className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium"
+                        className="w-full bg-gray-50 border-none rounded-2xl py-3.5 md:py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium text-sm md:text-base"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Phone Number (Optional)</label>
+                  <label className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Phone Number (Optional)</label>
                   <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={20} />
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={18} />
                     <input 
                       type="tel" 
                       value={guestInfo.phone}
                       onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
                       placeholder="+1 (555) 000-0000"
-                      className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium"
+                      className="w-full bg-gray-50 border-none rounded-2xl py-3.5 md:py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium text-sm md:text-base"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Project Details</label>
+                  <label className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Project Details</label>
                   <div className="relative">
-                    <FileText className="absolute left-4 top-4 text-[#9E9E9E]" size={20} />
+                    <FileText className="absolute left-4 top-4 text-[#9E9E9E]" size={18} />
                     <textarea 
                       required
                       value={guestInfo.projectDetails}
                       onChange={(e) => setGuestInfo({...guestInfo, projectDetails: e.target.value})}
                       placeholder="Tell us more about your project requirements..."
-                      rows={4}
-                      className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium resize-none"
+                      rows={3}
+                      className="w-full bg-gray-50 border-none rounded-2xl py-3.5 md:py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-medium resize-none text-sm md:text-base"
                     />
                   </div>
                 </div>
 
-                <div className="pt-4">
+                <div className="pt-2 md:pt-4">
+                  <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
+                    <label className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#1A1A1A] ml-1">Promo Code</label>
+                    <div className="flex gap-2 md:gap-3">
+                      <div className="relative flex-1">
+                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9E9E9E]" size={18} />
+                        <input 
+                          type="text" 
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                          placeholder="ENTER CODE"
+                          className="w-full bg-gray-50 border-none rounded-2xl py-3.5 md:py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#F27D26] transition-all font-bold tracking-widest text-xs md:text-sm"
+                        />
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={applyPromoCode}
+                        disabled={isApplyingPromo || !promoCode}
+                        className="px-4 md:px-6 bg-[#1A1A1A] text-white rounded-2xl font-bold hover:bg-[#F27D26] transition-all disabled:opacity-50 text-sm"
+                      >
+                        {isApplyingPromo ? '...' : (appliedOffer ? <Check size={18} /> : 'Apply')}
+                      </button>
+                    </div>
+                    {appliedOffer && (
+                      <p className="text-[10px] md:text-xs font-bold text-green-600 ml-1">
+                        Applied: {appliedOffer.title} ({appliedOffer.discountPercentage}% OFF)
+                      </p>
+                    )}
+                  </div>
+
                   <button 
                     type="submit"
                     disabled={booking}
-                    className="w-full bg-[#1A1A1A] text-white py-6 rounded-2xl text-lg font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 flex items-center justify-center group disabled:opacity-50"
+                    className="w-full bg-[#1A1A1A] text-white py-4 md:py-6 rounded-2xl text-base md:text-lg font-bold hover:bg-[#F27D26] transition-all shadow-xl shadow-black/10 flex items-center justify-center group disabled:opacity-50"
                   >
-                    {booking ? 'Processing...' : `Confirm Booking - $${service.price}`}
-                    {!booking && <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" />}
+                    {booking ? 'Processing...' : `Confirm Booking - $${(service.price * (1 - discount / 100)).toFixed(2)}`}
+                    {!booking && <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" size={20} />}
                   </button>
                 </div>
               </form>

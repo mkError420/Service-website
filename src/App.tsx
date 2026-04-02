@@ -11,6 +11,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import OfferPopup from './components/OfferPopup';
 import { auth, db } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -117,6 +118,7 @@ export default function App() {
     <ErrorBoundary>
       <Router>
         <ScrollToTop />
+        <OfferPopup />
         <Layout>
           <Routes>
             <Route path="/" element={<Home />} />

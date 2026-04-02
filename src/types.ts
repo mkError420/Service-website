@@ -44,9 +44,12 @@ export interface Order {
   serviceId: string;
   serviceTitle: string;
   price: number;
+  originalPrice?: number;
   status: 'pending' | 'paid' | 'in-progress' | 'completed' | 'cancelled';
   cancellationNote?: string;
   paymentId?: string;
+  promoCode?: string;
+  discountAmount?: number;
   assignedExpertId?: string; // Employee/Expert UID
   assignedExpertName?: string; // Employee/Expert Name
   createdAt: Timestamp;
@@ -126,4 +129,17 @@ export interface NewsletterSubscription {
   id: string;
   email: string;
   createdAt: Timestamp;
+}
+
+export interface Offer {
+  id: string;
+  title: string;
+  description: string;
+  promoCode: string;
+  discountPercentage: number;
+  active: boolean;
+  imageUrl?: string;
+  expiryDate?: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
