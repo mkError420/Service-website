@@ -108,9 +108,9 @@ export default function About() {
           </p>
           <div className="pt-8">
             <img 
-              src="https://picsum.photos/seed/agency/800/600" 
-              alt="Our Team" 
-              className="rounded-[40px] shadow-2xl"
+              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop" 
+              alt="ServicesHub Team Excellence" 
+              className="rounded-[40px] shadow-2xl w-full h-full object-cover"
               referrerPolicy="no-referrer"
             />
           </div>
