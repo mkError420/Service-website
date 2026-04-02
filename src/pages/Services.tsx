@@ -105,7 +105,7 @@ export default function Services() {
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-xl shadow-black/5 mb-16 space-y-8">
+      <div className="bg-white/40 backdrop-blur-md p-8 rounded-[32px] border border-white/50 shadow-xl shadow-black/5 mb-16 space-y-8">
         <div className="flex flex-col md:flex-row gap-6 items-center justify-between">
           {/* Search */}
           <div className="relative w-full md:max-w-md group">
@@ -121,16 +121,16 @@ export default function Services() {
 
           <div className="flex items-center gap-4 w-full md:w-auto">
             {/* View Mode Toggle */}
-            <div className="hidden md:flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+            <div className="hidden md:flex bg-white/20 p-1 rounded-xl border border-white/30">
               <button 
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white text-[#F27D26] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white/80 text-[#F27D26] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 <LayoutGrid size={20} />
               </button>
               <button 
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-[#F27D26] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white/80 text-[#F27D26] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 <List size={20} />
               </button>
@@ -364,7 +364,7 @@ export default function Services() {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-4 rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="p-4 rounded-2xl border border-white/50 bg-white/40 backdrop-blur-sm hover:bg-white/60 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -377,7 +377,7 @@ export default function Services() {
                     className={`w-12 h-12 rounded-2xl text-sm font-bold transition-all ${
                       currentPage === page
                         ? 'bg-[#1A1A1A] text-white shadow-lg shadow-black/10'
-                        : 'bg-white border border-gray-100 text-[#4A4A4A] hover:bg-gray-50'
+                        : 'bg-white/40 backdrop-blur-sm border border-white/50 text-[#4A4A4A] hover:bg-white/60'
                     }`}
                   >
                     {page}
@@ -388,7 +388,7 @@ export default function Services() {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-4 rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="p-4 rounded-2xl border border-white/50 bg-white/40 backdrop-blur-sm hover:bg-white/60 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronRight size={20} />
               </button>

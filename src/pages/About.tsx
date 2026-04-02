@@ -91,7 +91,7 @@ export default function About() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.1 }}
-            className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-xl shadow-black/5 text-center"
+            className="bg-white/40 backdrop-blur-md p-8 rounded-[32px] border border-white/50 shadow-xl shadow-black/5 text-center"
           >
             <h3 className="text-4xl font-black text-[#1A1A1A] mb-2">{stat.value}</h3>
             <p className="text-sm font-bold text-[#9E9E9E] uppercase tracking-widest">{stat.label}</p>
@@ -123,7 +123,7 @@ export default function About() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm flex items-start space-x-6"
+              className="bg-white/40 backdrop-blur-md p-8 rounded-[32px] border border-white/50 shadow-sm flex items-start space-x-6"
             >
               <div className="w-14 h-14 bg-[#F27D26]/10 rounded-2xl flex items-center justify-center flex-shrink-0">
                 <value.icon size={28} className="text-[#F27D26]" />
@@ -154,7 +154,7 @@ export default function About() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="group bg-white rounded-[40px] overflow-hidden border border-gray-100 shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-[#F27D26]/10 transition-all duration-500"
+                className="group bg-white/40 backdrop-blur-md rounded-[40px] overflow-hidden border border-white/50 shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-[#F27D26]/10 transition-all duration-500"
               >
                 <div className="aspect-square overflow-hidden relative">
                   <img 

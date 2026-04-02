@@ -86,7 +86,7 @@ export default function Contact() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm flex items-start space-x-6"
+              className="bg-white/40 backdrop-blur-md p-8 rounded-[32px] border border-white/50 shadow-sm flex items-start space-x-6"
             >
               <div className="w-14 h-14 bg-[#F27D26]/10 rounded-2xl flex items-center justify-center flex-shrink-0">
                 <info.icon size={28} className="text-[#F27D26]" />
@@ -106,7 +106,7 @@ export default function Contact() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="bg-white p-10 md:p-16 rounded-[48px] border border-gray-100 shadow-2xl shadow-black/5"
+            className="bg-white/40 backdrop-blur-md p-10 md:p-16 rounded-[48px] border border-white/50 shadow-2xl shadow-black/5"
           >
             <div className="flex items-center space-x-4 mb-10">
               <div className="w-12 h-12 bg-[#1A1A1A] rounded-2xl flex items-center justify-center">

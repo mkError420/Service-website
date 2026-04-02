@@ -46,7 +46,7 @@ export default function ServiceCard({ service, index, layout = 'grid' }: Service
     >
       <Link 
         to={`/services/${service.id}`}
-        className={`group relative bg-white rounded-[2rem] overflow-hidden border border-gray-100 hover:border-transparent hover:shadow-[0_48px_96px_-12px_rgba(0,0,0,0.1)] transition-all duration-700 flex ${isList ? 'flex-col md:flex-row' : 'flex-col h-full'}`}
+        className={`group relative bg-white/40 backdrop-blur-md rounded-[2rem] overflow-hidden border border-white/50 hover:border-transparent hover:shadow-[0_48px_96px_-12px_rgba(0,0,0,0.1)] transition-all duration-700 flex ${isList ? 'flex-col md:flex-row' : 'flex-col h-full'}`}
       >
         {/* Spotlight Effect Overlay */}
         <motion.div 

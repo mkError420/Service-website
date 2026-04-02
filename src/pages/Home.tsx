@@ -223,9 +223,9 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 overflow-hidden bg-white">
+      <section className="relative pt-32 pb-20 overflow-hidden">
         {/* Background Decorative Elements */}
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gray-50/50 -z-10" />
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-gray-50/20 -z-10" />
         <div className="absolute top-20 right-20 w-64 h-64 bg-[#F27D26]/5 rounded-full blur-3xl" />
         <div className="absolute bottom-20 left-20 w-96 h-96 bg-gray-100 rounded-full blur-3xl" />
         
@@ -375,7 +375,7 @@ export default function Home() {
               className="group p-10 rounded-[32px] border border-gray-100 hover:border-[#F27D26] hover:bg-white hover:shadow-2xl hover:shadow-[#F27D26]/5 transition-all duration-500 cursor-pointer"
               onClick={() => window.location.href = `/services?cat=${cat.name}`}
             >
-              <div className={`w-16 h-16 rounded-2xl mb-8 flex items-center justify-center transition-colors duration-500 overflow-hidden`} style={{ backgroundColor: `${cat.color}10` }}>
+              <div className={`w-16 h-16 rounded-2xl mb-8 flex items-center justify-center transition-colors duration-500 overflow-hidden`} style={{ backgroundColor: `${cat.color}20` }}>
                 {cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:image')) ? (
                   <img src={cat.icon} alt={cat.name} className="w-full h-full object-contain p-3" referrerPolicy="no-referrer" />
                 ) : (
@@ -436,7 +436,7 @@ export default function Home() {
               {i < processSteps.length - 1 && (
                 <div className="hidden lg:block absolute top-12 left-full w-full h-[2px] bg-gray-100 -z-10" />
               )}
-              <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-xl shadow-black/5 relative z-10">
+              <div className="bg-white/40 backdrop-blur-md p-8 rounded-[32px] border border-white/50 shadow-xl shadow-black/5 relative z-10">
                 <div className="w-12 h-12 bg-[#1A1A1A] text-white rounded-2xl flex items-center justify-center font-black mb-6">
                   0{i + 1}
                 </div>
@@ -498,7 +498,7 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="bg-gray-50 py-32 rounded-[60px]">
+      <section className="bg-gray-50/30 backdrop-blur-sm py-32 rounded-[60px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20">
             <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight">Client Stories<span className="text-[#F27D26]">.</span></h2>
@@ -515,7 +515,7 @@ export default function Home() {
                 { id: 'f3', name: 'Emma Davis', role: 'Marketing Director, GlobalScale', content: 'Our conversion rates tripled after we switched to their MERN stack solutions. Truly a game-changer.', avatar: 'https://i.pravatar.cc/150?u=emma', rating: 5 },
               ]).map((t) => (
                 <div key={t.id} className="embla__slide py-4">
-                  <div className="bg-white p-10 rounded-[40px] shadow-xl shadow-black/5 border border-gray-100 h-full flex flex-col select-none">
+                  <div className="bg-white/60 backdrop-blur-md p-10 rounded-[40px] shadow-xl shadow-black/5 border border-white/50 h-full flex flex-col select-none">
                     <div className="flex items-center space-x-4 mb-8">
                       <img 
                         src={t.avatar} 
@@ -548,10 +548,10 @@ export default function Home() {
         </div>
         <div className="space-y-4">
           {faqs.map((faq, i) => (
-            <div key={i} className="bg-white rounded-3xl border border-gray-100 overflow-hidden">
+            <div key={i} className="bg-white/40 backdrop-blur-md rounded-3xl border border-white/50 overflow-hidden">
               <button 
                 onClick={() => setActiveFaq(activeFaq === i ? null : i)}
-                className="w-full p-8 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                className="w-full p-8 flex items-center justify-between text-left hover:bg-white/20 transition-colors"
               >
                 <span className="text-lg font-bold text-[#1A1A1A]">{faq.q}</span>
                 <ChevronDown className={`text-[#F27D26] transition-transform duration-300 ${activeFaq === i ? 'rotate-180' : ''}`} />

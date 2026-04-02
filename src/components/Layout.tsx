@@ -116,7 +116,7 @@ export default function Layout({ children }: LayoutProps) {
     : [];
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A] font-sans">
+    <div className="min-h-screen text-[#1A1A1A] font-sans">
       <Toaster position="top-center" richColors />
       
       {/* Navigation */}
