@@ -122,7 +122,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Navigation */}
       {!isFullPageLayout && (
         <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled ? 'bg-white/80 backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-6'
+          isScrolled ? 'bg-white/40 backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-6'
         }`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <Link to="/" className="flex items-center space-x-2 group">
@@ -303,7 +303,7 @@ export default function Layout({ children }: LayoutProps) {
       
       {/* Pre-footer: Bangladeshi Industry Leaders Ticker */}
       {!isFullPageLayout && (
-        <section className="max-w-full overflow-hidden py-12 border-y border-gray-100 bg-white">
+        <section className="max-w-full overflow-hidden py-12 border-y border-gray-100/50">
           <p className="text-center text-[#9E9E9E] font-bold uppercase tracking-widest text-[10px] mb-8">Trusted by Bangladeshi Industry Leaders</p>
           <div className="flex relative">
             <motion.div 
@@ -360,7 +360,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Footer */}
       {!isFullPageLayout && (
-        <footer className="bg-white border-t border-gray-100 py-12 mt-20">
+        <footer className="border-t border-gray-100/50 py-12 mt-20 bg-white/20 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
               <div className="col-span-1 md:col-span-2">
