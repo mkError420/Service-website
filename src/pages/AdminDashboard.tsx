@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, setDoc, doc, deleteDoc, Timestamp, where, getDocs, writeBatch } from 'firebase/firestore';
-import { Service, Order, UserProfile, ContactMessage, Message, Category, Settings as PlatformSettings, Testimonial, TeamMember } from '../types';
+import { Service, Order, UserProfile, ContactMessage, Message, Category, Settings as PlatformSettings, Testimonial, TeamMember, NewsletterSubscription } from '../types';
 import { sendEmail } from '../services/emailService';
 import { seedServices } from '../lib/seedData';
 import { 
@@ -40,7 +40,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
-type AdminTab = 'overview' | 'services' | 'categories' | 'orders' | 'users' | 'messages' | 'mail' | 'testimonials' | 'team' | 'settings';
+type AdminTab = 'overview' | 'services' | 'categories' | 'orders' | 'users' | 'messages' | 'mail' | 'subscribers' | 'testimonials' | 'team' | 'settings';
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [newsletterSubscriptions, setNewsletterSubscriptions] = useState<NewsletterSubscription[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [chatMessage, setChatMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -104,6 +105,7 @@ export default function AdminDashboard() {
   const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
   const [deletingTestimonialId, setDeletingTestimonialId] = useState<string | null>(null);
   const [deletingTeamMemberId, setDeletingTeamMemberId] = useState<string | null>(null);
+  const [deletingSubscriberId, setDeletingSubscriberId] = useState<string | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assigningExpert, setAssigningExpert] = useState<TeamMember | null>(null);
   const [revenueFilter, setRevenueFilter] = useState<'7' | '30'>('7');
@@ -234,6 +236,13 @@ export default function AdminDashboard() {
       handleFirestoreError(error, OperationType.GET, 'team');
     });
 
+    const qNewsletter = query(collection(db, 'newsletter_subscriptions'), orderBy('createdAt', 'desc'));
+    const unsubNewsletter = onSnapshot(qNewsletter, (snapshot) => {
+      setNewsletterSubscriptions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as NewsletterSubscription)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'newsletter_subscriptions');
+    });
+
     return () => {
       unsubServices();
       unsubOrders();
@@ -244,6 +253,7 @@ export default function AdminDashboard() {
       unsubSettings();
       unsubTestimonials();
       unsubTeam();
+      unsubNewsletter();
     };
   }, []);
 
@@ -550,6 +560,20 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteSubscriber = async (id: string) => {
+    setIsProcessing(true);
+    try {
+      await deleteDoc(doc(db, 'newsletter_subscriptions', id));
+      toast.success("Subscriber removed successfully");
+      setDeletingSubscriberId(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `newsletter_subscriptions/${id}`);
+      toast.error("Failed to remove subscriber");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deletingServiceId) return;
     setIsProcessing(true);
@@ -841,6 +865,7 @@ export default function AdminDashboard() {
     { label: 'Active Orders', value: orders.filter(o => ['paid', 'in-progress'].includes(o.status)).length, icon: ShoppingBag, color: '#1A1A1A' },
     { label: 'Total Services', value: services.length, icon: LayoutDashboard, color: '#F27D26' },
     { label: 'Total Users', value: allUsers.length, icon: Users, color: '#1A1A1A' },
+    { label: 'Subscribers', value: newsletterSubscriptions.length, icon: Mail, color: '#F27D26' },
   ];
 
   const revenueData = useMemo(() => {
@@ -915,6 +940,7 @@ export default function AdminDashboard() {
     { id: 'users', label: 'Users', icon: Users },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'mail', label: 'Mail', icon: Mail },
+    { id: 'subscribers', label: 'Subscribers', icon: Users },
     { id: 'testimonials', label: 'Testimonials', icon: MessageSquare },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -976,6 +1002,7 @@ export default function AdminDashboard() {
               {activeTab === 'users' && 'Manage user roles and platform permissions.'}
               {activeTab === 'messages' && 'Live chat and communication with clients.'}
               {activeTab === 'mail' && 'Manage inquiries from the contact form.'}
+              {activeTab === 'subscribers' && 'Manage newsletter subscriptions and email list.'}
               {activeTab === 'testimonials' && 'Manage client feedback and social proof.'}
               {activeTab === 'team' && 'Manage your expert team and public profiles.'}
               {activeTab === 'settings' && 'Configure platform defaults and system settings.'}
@@ -1036,7 +1063,7 @@ export default function AdminDashboard() {
           {activeTab === 'overview' && (
             <div className="space-y-12">
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                 {stats.map((stat, i) => (
                   <div key={i} className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-6">
@@ -1780,6 +1807,81 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {activeTab === 'subscribers' && (
+            <div className="space-y-10">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-4xl font-black tracking-tight mb-2">Newsletter Subscribers</h2>
+                  <p className="text-[#4A4A4A] font-medium">Manage your email list and newsletter subscriptions.</p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="bg-white px-6 py-3 rounded-2xl border border-gray-100 shadow-sm">
+                    <p className="text-xs font-bold text-[#9E9E9E] uppercase tracking-widest mb-1">Total Subscribers</p>
+                    <p className="text-2xl font-black text-[#F27D26]">{newsletterSubscriptions.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[48px] border border-gray-100 shadow-2xl shadow-black/5 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-bottom border-gray-100">
+                        <th className="px-10 py-8 text-xs font-black uppercase tracking-widest text-[#9E9E9E]">Email Address</th>
+                        <th className="px-10 py-8 text-xs font-black uppercase tracking-widest text-[#9E9E9E]">Subscribed Date</th>
+                        <th className="px-10 py-8 text-xs font-black uppercase tracking-widest text-[#9E9E9E] text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {newsletterSubscriptions.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-10 py-20 text-center">
+                            <div className="flex flex-col items-center">
+                              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                <Mail size={32} className="text-gray-300" />
+                              </div>
+                              <p className="text-[#9E9E9E] font-bold">No subscribers found.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        newsletterSubscriptions.map((sub) => (
+                          <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-10 py-8">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-10 h-10 rounded-xl bg-[#F27D26]/10 flex items-center justify-center">
+                                  <Mail size={18} className="text-[#F27D26]" />
+                                </div>
+                                <p className="font-black text-[#1A1A1A]">{sub.email}</p>
+                              </div>
+                            </td>
+                            <td className="px-10 py-8">
+                              <p className="text-sm font-bold text-[#1A1A1A]">
+                                {sub.createdAt?.toDate().toLocaleDateString()}
+                              </p>
+                              <p className="text-xs text-[#9E9E9E]">
+                                {sub.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </td>
+                            <td className="px-10 py-8 text-right">
+                              <button 
+                                onClick={() => setDeletingSubscriberId(sub.id)}
+                                className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100 transition-all"
+                                title="Remove Subscriber"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'testimonials' && (
             <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -2291,6 +2393,41 @@ export default function AdminDashboard() {
                   className="flex-1 px-8 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
                 >
                   Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Subscriber Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingSubscriberId && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={40} />
+              </div>
+              <h2 className="text-2xl font-black mb-4">Remove Subscriber?</h2>
+              <p className="text-[#4A4A4A] mb-10">This will permanently remove this email from your newsletter subscription list. Are you sure?</p>
+              
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setDeletingSubscriberId(null)}
+                  className="flex-1 px-8 py-4 bg-gray-100 text-[#1A1A1A] rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => handleDeleteSubscriber(deletingSubscriberId)}
+                  className="flex-1 px-8 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                >
+                  Remove
                 </button>
               </div>
             </motion.div>

@@ -121,3 +121,9 @@ export interface TeamMember {
   active: boolean;
   createdAt: Timestamp;
 }
+
+export interface NewsletterSubscription {
+  id: string;
+  email: string;
+  createdAt: Timestamp;
+}
