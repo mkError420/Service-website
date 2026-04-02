@@ -396,7 +396,7 @@ export default function Layout({ children }: LayoutProps) {
                   )}
                 </Link>
                 <p className="text-[#4A4A4A] max-w-sm text-sm leading-relaxed">
-                  Empowering businesses with premium digital solutions. From MERN stack development to high-end video editing, we deliver excellence.
+                  We provide complete digital services including web app development, mobile app development, digital marketing, and video editing. Our team delivers scalable, high-quality solutions tailored to your business goals. From startups to growing brands, we help you build, grow, and succeed online with innovative and reliable digital services.
                 </p>
               </div>
               <div>
@@ -419,7 +419,7 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             </div>
             <div className="border-t border-gray-100 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-[#9E9E9E]">
-              <p>© 2026 {settings?.platformName || 'ServicesHub Pro'}. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} {settings?.platformName || 'ServicesHub Pro'}. All rights reserved.</p>
               <div className="flex space-x-6 mt-4 md:mt-0">
                 <a href="https://www.facebook.com/share/18Mt4vhGXz/" className="hover:text-[#1A1A1A]">Facebook</a>
                 <a href="https://www.linkedin.com/in/mk-rabbani-81343024b/" className="hover:text-[#1A1A1A]">LinkedIn</a>
