@@ -204,7 +204,12 @@ service cloud.firestore {
       return data.platformName is string && data.platformName.size() > 0 && data.platformName.size() < 100 &&
              data.supportEmail is string && isValidEmail(data.supportEmail) &&
              data.maintenanceMode is bool &&
-             data.updatedAt is timestamp;
+             data.updatedAt is timestamp &&
+             (!('logoUrl' in data) || data.logoUrl is string) &&
+             (!('supportPhone' in data) || data.supportPhone is string) &&
+             (!('officeAddress' in data) || data.officeAddress is string) &&
+             (!('workingHours' in data) || data.workingHours is string) &&
+             (!('showreelUrl' in data) || data.showreelUrl is string);
     }
 
     function isValidTestimonial(data) {

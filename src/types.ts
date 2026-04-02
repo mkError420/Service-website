@@ -90,6 +90,7 @@ export interface ContactMessage {
 
 export interface Settings {
   platformName: string;
+  logoUrl?: string;
   supportEmail: string;
   supportPhone?: string;
   officeAddress?: string;

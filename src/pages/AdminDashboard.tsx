@@ -536,6 +536,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit
+        toast.error('Logo file size should be less than 1MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPlatformSettings({ ...platformSettings, logoUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
@@ -2619,6 +2634,54 @@ export default function AdminDashboard() {
                   Platform Defaults
                 </h3>
                 <div className="space-y-6">
+                  <div className="space-y-4">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Website Logo</label>
+                    <div className="flex items-center space-x-6">
+                      <div className="w-24 h-24 bg-gray-50 rounded-[24px] border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden group relative">
+                        {platformSettings.logoUrl ? (
+                          <>
+                            <img src={platformSettings.logoUrl} alt="Logo Preview" className="w-full h-full object-contain p-4" referrerPolicy="no-referrer" />
+                            <button 
+                              onClick={() => setPlatformSettings({ ...platformSettings, logoUrl: '' })}
+                              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+                            >
+                              <X size={20} />
+                            </button>
+                          </>
+                        ) : (
+                          <ImageIcon className="text-gray-300" size={32} />
+                        )}
+                      </div>
+                      <div className="flex-grow space-y-3">
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            value={platformSettings.logoUrl?.startsWith('data:image') ? 'Base64 Image' : platformSettings.logoUrl || ''} 
+                            onChange={(e) => setPlatformSettings({ ...platformSettings, logoUrl: e.target.value })}
+                            placeholder="Paste logo URL here..."
+                            disabled={platformSettings.logoUrl?.startsWith('data:image')}
+                            className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 font-bold focus:ring-2 focus:ring-[#F27D26] transition-all" 
+                          />
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                            id="logo-upload"
+                          />
+                          <label 
+                            htmlFor="logo-upload"
+                            className="px-6 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all"
+                          >
+                            Upload Image
+                          </label>
+                          <p className="text-[10px] text-[#9E9E9E] font-medium italic">Recommended: Square or Horizontal PNG/SVG</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Platform Name</label>
                     <input 

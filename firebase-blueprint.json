@@ -121,6 +121,7 @@
       "type": "object",
       "properties": {
         "platformName": { "type": "string" },
+        "logoUrl": { "type": "string" },
         "supportEmail": { "type": "string" },
         "maintenanceMode": { "type": "boolean" },
         "updatedAt": { "type": "string", "format": "date-time" }

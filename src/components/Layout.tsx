@@ -123,13 +123,30 @@ export default function Layout({ children }: LayoutProps) {
         }`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <Link to="/" className="flex items-center space-x-2 group">
-              <div className="w-10 h-10 bg-[#1A1A1A] rounded-xl flex items-center justify-center group-hover:rotate-6 transition-transform">
-                <span className="text-white font-bold text-xl">{(settings?.platformName || 'S')[0]}</span>
-              </div>
-              <span className="text-xl font-bold tracking-tight">
-                {settings?.platformName || 'ServicesHub'}
-                <span className="text-[#F27D26]">.</span>
-              </span>
+              {settings?.logoUrl ? (
+                <>
+                  <img 
+                    src={settings.logoUrl} 
+                    alt={settings.platformName} 
+                    className="h-10 w-auto object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                  <span className="text-xl font-bold tracking-tight">
+                    {settings?.platformName || 'ServicesHub'}
+                    <span className="text-[#F27D26]">.</span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="w-10 h-10 bg-[#1A1A1A] rounded-xl flex items-center justify-center group-hover:rotate-6 transition-transform">
+                    <span className="text-white font-bold text-xl">{(settings?.platformName || 'S')[0]}</span>
+                  </div>
+                  <span className="text-xl font-bold tracking-tight">
+                    {settings?.platformName || 'ServicesHub'}
+                    <span className="text-[#F27D26]">.</span>
+                  </span>
+                </>
+              )}
             </Link>
 
             {/* Desktop Nav */}
@@ -340,13 +357,30 @@ export default function Layout({ children }: LayoutProps) {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
               <div className="col-span-1 md:col-span-2">
                 <Link to="/" className="flex items-center space-x-2 mb-6">
-                  <div className="w-8 h-8 bg-[#1A1A1A] rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">{(settings?.platformName || 'S')[0]}</span>
-                  </div>
-                  <span className="text-lg font-bold">
-                    {settings?.platformName || 'ServicesHub'}
-                    <span className="text-[#F27D26]">.</span>
-                  </span>
+                  {settings?.logoUrl ? (
+                    <>
+                      <img 
+                        src={settings.logoUrl} 
+                        alt={settings.platformName} 
+                        className="h-8 w-auto object-contain"
+                        referrerPolicy="no-referrer"
+                      />
+                      <span className="text-lg font-bold">
+                        {settings?.platformName || 'ServicesHub'}
+                        <span className="text-[#F27D26]">.</span>
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-8 h-8 bg-[#1A1A1A] rounded-lg flex items-center justify-center">
+                        <span className="text-white font-bold text-lg">{(settings?.platformName || 'S')[0]}</span>
+                      </div>
+                      <span className="text-lg font-bold">
+                        {settings?.platformName || 'ServicesHub'}
+                        <span className="text-[#F27D26]">.</span>
+                      </span>
+                    </>
+                  )}
                 </Link>
                 <p className="text-[#4A4A4A] max-w-sm text-sm leading-relaxed">
                   Empowering businesses with premium digital solutions. From MERN stack development to high-end video editing, we deliver excellence.
