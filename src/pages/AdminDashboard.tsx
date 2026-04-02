@@ -4,6 +4,7 @@ import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, setDoc, doc,
 import { Service, Order, UserProfile, ContactMessage, Message, Category, Settings as PlatformSettings, Testimonial, TeamMember, NewsletterSubscription, Offer } from '../types';
 import { sendEmail } from '../services/emailService';
 import { seedServices } from '../lib/seedData';
+import * as LucideIcons from 'lucide-react';
 import { 
   Plus, 
   Edit2, 
@@ -44,6 +45,11 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 type AdminTab = 'overview' | 'services' | 'categories' | 'orders' | 'users' | 'messages' | 'mail' | 'subscribers' | 'testimonials' | 'team' | 'offers' | 'settings';
+
+const IconComponent = ({ name, ...props }: { name: string; [key: string]: any }) => {
+  const Icon = (LucideIcons as any)[name] || LucideIcons.HelpCircle;
+  return <Icon {...props} />;
+};
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
@@ -145,6 +151,7 @@ export default function AdminDashboard() {
   const [categoryFormData, setCategoryFormData] = useState({
     name: '',
     icon: 'Code',
+    iconType: 'lucide' as 'lucide' | 'image',
     color: '#F27D26'
   });
 
@@ -316,9 +323,11 @@ export default function AdminDashboard() {
   const handleOpenCategoryModal = (category: Category | null = null) => {
     if (category) {
       setEditingCategory(category);
+      const isUrl = category.icon?.startsWith('http') || category.icon?.startsWith('data:image');
       setCategoryFormData({
         name: category.name,
         icon: category.icon || 'Code',
+        iconType: isUrl ? 'image' : 'lucide',
         color: category.color || '#F27D26'
       });
     } else {
@@ -326,6 +335,7 @@ export default function AdminDashboard() {
       setCategoryFormData({
         name: '',
         icon: 'Code',
+        iconType: 'lucide',
         color: '#F27D26'
       });
     }
@@ -500,6 +510,21 @@ export default function AdminDashboard() {
       toast.error('Failed to delete team member');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 500 * 1024) { // 500KB limit
+        toast.error('Icon file size should be less than 500KB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCategoryFormData({ ...categoryFormData, icon: reader.result as string, iconType: 'image' });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -1438,10 +1463,14 @@ export default function AdminDashboard() {
                   >
                     <div className="flex justify-between items-start mb-6">
                       <div 
-                        className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shadow-black/5"
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shadow-black/5 overflow-hidden"
                         style={{ backgroundColor: `${category.color}15`, color: category.color }}
                       >
-                        <Layers size={28} />
+                        {category.icon && (category.icon.startsWith('http') || category.icon.startsWith('data:image')) ? (
+                          <img src={category.icon} alt={category.name} className="w-full h-full object-contain p-2" referrerPolicy="no-referrer" />
+                        ) : (
+                          <IconComponent name={category.icon || 'Layers'} size={28} />
+                        )}
                       </div>
                       <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
@@ -3548,16 +3577,84 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Icon Name (Lucide)</label>
-                  <input 
-                    type="text" 
-                    className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
-                    value={categoryFormData.icon}
-                    onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
-                    placeholder="Code, Layout, Video, etc."
-                  />
-                  <p className="text-[10px] text-[#9E9E9E] font-medium italic">Use any icon name from lucide.dev</p>
+                <div className="space-y-4">
+                  <label className="text-xs font-bold uppercase tracking-widest text-[#9E9E9E]">Category Icon</label>
+                  
+                  <div className="flex p-1 bg-gray-50 rounded-2xl border border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setCategoryFormData({ ...categoryFormData, iconType: 'lucide', icon: 'Code' })}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${categoryFormData.iconType === 'lucide' ? 'bg-white text-[#F27D26] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                      Lucide Icon
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategoryFormData({ ...categoryFormData, iconType: 'image', icon: '' })}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${categoryFormData.iconType === 'image' ? 'bg-white text-[#F27D26] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                      Image/URL
+                    </button>
+                  </div>
+
+                  {categoryFormData.iconType === 'lucide' ? (
+                    <div className="space-y-2">
+                      <input 
+                        type="text" 
+                        className="w-full bg-gray-50 border-transparent rounded-2xl px-6 py-4 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all font-medium"
+                        value={categoryFormData.icon}
+                        onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
+                        placeholder="Code, Layout, Video, etc."
+                      />
+                      <p className="text-[10px] text-[#9E9E9E] font-medium italic">Use any icon name from lucide.dev</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-16 h-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
+                          {categoryFormData.icon && (categoryFormData.icon.startsWith('http') || categoryFormData.icon.startsWith('data:image')) ? (
+                            <img src={categoryFormData.icon} alt="Preview" className="w-full h-full object-contain p-2" referrerPolicy="no-referrer" />
+                          ) : (
+                            <ImageIcon className="text-gray-300" size={24} />
+                          )}
+                        </div>
+                        <div className="flex-grow space-y-2">
+                          <input 
+                            type="text" 
+                            className="w-full bg-gray-50 border-transparent rounded-xl px-4 py-3 focus:bg-white focus:border-[#F27D26] focus:ring-0 transition-all text-sm"
+                            value={categoryFormData.icon.startsWith('data:image') ? 'Base64 Image' : categoryFormData.icon}
+                            onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
+                            placeholder="Paste image URL here..."
+                            disabled={categoryFormData.icon.startsWith('data:image')}
+                          />
+                          <div className="relative">
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              onChange={handleIconUpload}
+                              className="hidden"
+                              id="category-icon-upload"
+                            />
+                            <label 
+                              htmlFor="category-icon-upload"
+                              className="inline-block px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-colors"
+                            >
+                              Upload from device
+                            </label>
+                            {categoryFormData.icon.startsWith('data:image') && (
+                              <button 
+                                type="button"
+                                onClick={() => setCategoryFormData({ ...categoryFormData, icon: '' })}
+                                className="ml-2 text-[10px] font-bold text-red-500 uppercase tracking-widest hover:underline"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <button 

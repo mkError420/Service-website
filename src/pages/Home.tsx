@@ -375,8 +375,12 @@ export default function Home() {
               className="group p-10 rounded-[32px] border border-gray-100 hover:border-[#F27D26] hover:bg-white hover:shadow-2xl hover:shadow-[#F27D26]/5 transition-all duration-500 cursor-pointer"
               onClick={() => window.location.href = `/services?cat=${cat.name}`}
             >
-              <div className={`w-16 h-16 rounded-2xl mb-8 flex items-center justify-center transition-colors duration-500`} style={{ backgroundColor: `${cat.color}10` }}>
-                <IconComponent name={cat.icon || 'Code'} size={32} style={{ color: cat.color }} />
+              <div className={`w-16 h-16 rounded-2xl mb-8 flex items-center justify-center transition-colors duration-500 overflow-hidden`} style={{ backgroundColor: `${cat.color}10` }}>
+                {cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:image')) ? (
+                  <img src={cat.icon} alt={cat.name} className="w-full h-full object-contain p-3" referrerPolicy="no-referrer" />
+                ) : (
+                  <IconComponent name={cat.icon || 'Code'} size={32} style={{ color: cat.color }} />
+                )}
               </div>
               <h3 className="text-2xl font-bold mb-2 group-hover:text-[#F27D26] transition-colors">{cat.name}</h3>
               <p className="text-[#9E9E9E] font-medium text-sm">
