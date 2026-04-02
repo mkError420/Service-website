@@ -172,7 +172,7 @@ export default function Home() {
   };
 
   const processSteps = [
-    { title: 'Discovery', desc: 'We dive deep into your brand, goals, and target audience to build a solid foundation.', icon: Search },
+    { title: 'Discovery', desc: 'We dive deep into your brand, goals, and target audience to build a solid foundation. We also connect in marketpace', icon: Search },
     { title: 'Strategy', desc: 'Our experts craft a tailored roadmap designed for maximum impact and scalability.', icon: Layers },
     { title: 'Execution', desc: 'Precision-engineered development and creative work brought to life by our specialists.', icon: Code },
     { title: 'Launch', desc: 'Final optimization and deployment, followed by dedicated post-launch support.', icon: Rocket },
