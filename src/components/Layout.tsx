@@ -30,6 +30,7 @@ export default function Layout({ children }: LayoutProps) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const navigate = useNavigate();
@@ -53,8 +54,10 @@ export default function Layout({ children }: LayoutProps) {
       if (doc.exists()) {
         setSettings(doc.data() as PlatformSettings);
       }
+      setSettingsLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'settings/config');
+      setSettingsLoading(false);
     });
 
     const handleScroll = () => {
@@ -123,7 +126,12 @@ export default function Layout({ children }: LayoutProps) {
         }`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <Link to="/" className="flex items-center space-x-2 group">
-              {settings?.logoUrl ? (
+              {settingsLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-10 h-10 bg-gray-100 animate-pulse rounded-xl" />
+                  <div className="w-32 h-6 bg-gray-100 animate-pulse rounded-lg" />
+                </div>
+              ) : settings?.logoUrl ? (
                 <>
                   <img 
                     src={settings.logoUrl} 
@@ -357,7 +365,12 @@ export default function Layout({ children }: LayoutProps) {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
               <div className="col-span-1 md:col-span-2">
                 <Link to="/" className="flex items-center space-x-2 mb-6">
-                  {settings?.logoUrl ? (
+                  {settingsLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 bg-gray-100 animate-pulse rounded-lg" />
+                      <div className="w-24 h-5 bg-gray-100 animate-pulse rounded-md" />
+                    </div>
+                  ) : settings?.logoUrl ? (
                     <>
                       <img 
                         src={settings.logoUrl} 
